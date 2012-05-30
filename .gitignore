@@ -1,0 +1,10 @@
+env/
+build/
+.project
+*.so
+*.pyc
+*.c
+*.cpp
+.pydevproject
+*.prof
+*.png

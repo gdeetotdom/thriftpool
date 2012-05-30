@@ -1,0 +1,103 @@
+from gevent.greenlet import Greenlet
+from gevent.pool import Pool
+from gevent.server import StreamServer
+from gevent_thrift.connection import Connection
+from gevent_zeromq import zmq
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
+from thrift.transport import TTransport
+from zmq.devices import Device
+import logging
+
+
+class Server(StreamServer):
+
+    def __init__(self, listener, context, frontend, **kwargs):
+        self.context = context
+        self.frontend = frontend
+        self.pool = Pool(size=1024)
+        super(Server, self).__init__(listener=listener, spawn=self.pool,
+                                     **kwargs)
+
+    def create_socket(self):
+        client_socket = self.context.socket(zmq.REQ)
+        client_socket.connect(self.frontend)
+        return client_socket
+
+    def handle(self, socket, address):
+        connection = Connection(socket)
+        zmq_socket = self.create_socket()
+        try:
+            while not connection.is_closed():
+                content = connection.get_request()
+                if connection.is_closed(): break
+                zmq_socket.send(content)
+                content = zmq_socket.recv()
+                connection.set_reply(content)
+        finally:
+            zmq_socket.close()
+
+
+class Worker(Greenlet):
+
+    def __init__(self, context, backend, processor):
+        self.context = context
+        self.backend = backend
+        self.in_protocol = TBinaryProtocolFactory()
+        self.out_protocol = self.in_protocol
+        self.processor = processor
+        Greenlet.__init__(self)
+
+    def create_socket(self):
+        worker_socket = self.context.socket(zmq.REP)
+        worker_socket.connect(self.backend)
+        return worker_socket
+
+    def process(self, socket):
+        itransport = TTransport.TMemoryBuffer(socket.recv())
+        otransport = TTransport.TMemoryBuffer()
+        iprot = self.in_protocol.getProtocol(itransport)
+        oprot = self.out_protocol.getProtocol(otransport)
+
+        try:
+            self.processor.process(iprot, oprot)
+        except Exception, exc:
+            logging.exception(exc)
+            socket.send('')
+        else:
+            socket.send(otransport.getvalue())
+
+    def _run(self):
+        socket = self.create_socket()
+        try:
+            while True:
+                self.process(socket)
+        finally:
+            socket.close()
+
+
+class Factory(object):
+
+    def __init__(self, frontend, backend):
+        self.context = zmq.Context()
+
+        self.frontend = frontend
+        self.backend = backend
+
+        super(Factory, self).__init__()
+
+    def Device(self):
+        device = Device(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
+        device.bind_in(self.frontend)
+        device.bind_out(self.backend)
+
+        return device
+
+    def Server(self, listener):
+        server = Server(listener, self.context, self.frontend)
+
+        return server
+
+    def Worker(self, processor):
+        worker = Worker(self.context, self.backend, processor)
+
+        return worker
