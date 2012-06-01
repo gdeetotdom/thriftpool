@@ -1,7 +1,7 @@
 from gevent.greenlet import Greenlet
 from gevent.pool import Pool
 from gevent.server import StreamServer
-from gevent_thrift.connection import Connection
+from socket_zmq.connection import Connection
 from gevent_zeromq import zmq
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
 from thrift.transport import TTransport
@@ -24,17 +24,8 @@ class Server(StreamServer):
         return client_socket
 
     def handle(self, socket, address):
-        connection = Connection(socket)
         zmq_socket = self.create_socket()
-        try:
-            while not connection.is_closed():
-                content = connection.get_request()
-                if connection.is_closed(): break
-                zmq_socket.send(content)
-                content = zmq_socket.recv()
-                connection.set_reply(content)
-        finally:
-            zmq_socket.close()
+        connection = Connection(socket, zmq_socket)
 
 
 class Worker(Greenlet):

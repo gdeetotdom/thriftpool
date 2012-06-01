@@ -2,7 +2,9 @@
 
 from broker import Broker
 from broker.ttypes import Result
-from gevent_thrift.server import TGeventStreamServer
+from socket_zmq.thrift_server import TGeventStreamServer
+from gevent.greenlet import Greenlet
+from setproctitle import setproctitle
 
 
 class BrokerHandler:
@@ -19,5 +21,14 @@ processor = Broker.Processor(handler)
 
 server = TGeventStreamServer(listener, processor)
 
-print 'Starting server'
-server.serve_forever()
+
+def main():
+    print 'Starting server'
+    Greenlet(server.stop).start_later(30)
+    server.serve_forever()
+
+if __name__ == '__main__':
+    setproctitle('[server]')
+    #main()
+    import cProfile
+    cProfile.runctx("main()", globals(), locals(), "server.prof")
