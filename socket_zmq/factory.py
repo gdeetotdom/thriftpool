@@ -5,7 +5,7 @@ from socket_zmq.connection import Connection
 from gevent_zeromq import zmq
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
 from thrift.transport import TTransport
-from zmq.devices import Device
+from zmq.devices import ThreadDevice
 import logging
 
 
@@ -68,16 +68,17 @@ class Worker(Greenlet):
 
 class Factory(object):
 
-    def __init__(self, frontend, backend):
+    def __init__(self, backend):
         self.context = zmq.Context()
 
-        self.frontend = frontend
+        self.frontend = "inproc://frontend_%s" % id(self)
         self.backend = backend
 
         super(Factory, self).__init__()
 
     def Device(self):
-        device = Device(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
+        device = ThreadDevice(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
+        device.context_factory = lambda: self.context
         device.bind_in(self.frontend)
         device.bind_out(self.backend)
 

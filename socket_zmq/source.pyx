@@ -1,18 +1,10 @@
-# cython: profile=False
+# cython: profile=True
 cimport cython
 from cpython cimport bool
 from libcpp.string cimport string
 import struct
 from gevent.hub import get_hub
 from gevent.socket import EAGAIN, error
-
-
-cdef enum States:
-    WAIT_LEN = 0
-    WAIT_MESSAGE = 1
-    WAIT_PROCESS = 2
-    SEND_ANSWER = 3
-    CLOSED = 4
 
 
 cdef extern from "sys/socket.h":
@@ -32,18 +24,6 @@ cdef class SocketSource(object):
         CLOSED --- socket was closed and connection should be deleted.
 
     """
-
-    cdef size_t len
-    cdef int fileno
-    cdef string *message
-    cdef States status
-
-    cdef object socket
-    cdef object format
-    cdef object callback
-
-    cdef object __read_watcher
-    cdef object __write_watcher
 
     def __cinit__(self):
         """We need to allocate std::string. Us it as buffer."""
@@ -122,7 +102,7 @@ cdef class SocketSource(object):
         s = self.message.substr(sent, self.message.size() - sent)
         self.message.assign(s)
 
-    cpdef _read_len(self):
+    cdef inline _read_len(self):
         """Reads length of request.
 
         It's really paranoic routine and it may be replaced by
@@ -139,7 +119,7 @@ cdef class SocketSource(object):
             return
 
         # always set string length, otherwise it will be read until
-        # null byte. C.O.
+        # null byte.
         self.message.append(<char *>read, read_length)
 
         if self.message.size() == 4:
@@ -151,7 +131,7 @@ cdef class SocketSource(object):
             self.message.clear()
             self.status = WAIT_MESSAGE
 
-    cpdef read(self):
+    cdef read(self):
         """Reads data from stream and switch state."""
         cdef int read_length
         assert self.is_readable()
@@ -174,7 +154,7 @@ cdef class SocketSource(object):
             if self.message.size() == self.len:
                 self.status = WAIT_PROCESS
 
-    cdef int send(self):
+    cdef inline int _send(self):
         global errno
         cdef int sent = send(self.fileno, self.message.c_str(),
                              self.message.size(), 0)
@@ -182,11 +162,11 @@ cdef class SocketSource(object):
             raise error(errno, '')
         return sent
 
-    cpdef write(self):
+    cdef write(self):
         """Writes data from socket and switch state."""
         assert self.is_writeable()
 
-        sent = self.send()
+        cdef int sent = self._send()
 
         if sent == self.message.size():
             self.status = WAIT_LEN
@@ -195,7 +175,14 @@ cdef class SocketSource(object):
         else:
             self.expunge(sent)
 
-    cpdef ready(self, bool all_ok, object message):
+    cdef close(self):
+        """Closes connection."""
+        self.status = CLOSED
+        self.stop_listen_read()
+        self.stop_listen_write()
+        self.socket.close()
+
+    cpdef object ready(self, bool all_ok, object message):
         """The ready can switch Connection to three states:
 
             WAIT_LEN if request was oneway.
@@ -222,13 +209,6 @@ cdef class SocketSource(object):
             self.message.append(<char *>message, message_length)
             self.status = SEND_ANSWER
             self.start_listen_write()
-
-    cpdef close(self):
-        """Closes connection."""
-        self.status = CLOSED
-        self.stop_listen_read()
-        self.stop_listen_write()
-        self.socket.close()
 
     cpdef on_readable(self):
         assert self.is_readable(), "can't read from unreadable socket"

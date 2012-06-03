@@ -1,4 +1,4 @@
-# cython: profile=False
+# cython: profile=True
 cimport cython
 from cpython cimport bool
 from gevent.hub import get_hub
@@ -6,21 +6,7 @@ import zmq
 from zmq.core.socket cimport Socket as ZMQSocket
 
 
-cdef enum States:
-    WAIT_MESSAGE = 1
-    SEND_REQUEST = 2
-    READ_REPLY = 3
-
-
 cdef class ZMQSink(object):
-
-    cdef ZMQSocket socket
-    cdef object callback
-    cdef object message
-    cdef States status
-
-    cdef object __read_watcher
-    cdef object __write_watcher
 
     def __init__(self, socket, callback):
         assert socket.getsockopt(zmq.TYPE) == zmq.REQ
@@ -86,7 +72,13 @@ cdef class ZMQSink(object):
         self.status = READ_REPLY
         self.message = None
 
-    cpdef ready(self, message):
+    cdef close(self):
+        self.status == CLOSED
+        self.stop_listen_read()
+        self.stop_listen_write()
+        self.socket.close()
+
+    cpdef ready(self, object message):
         assert self.is_ready()
         self.status = SEND_REQUEST
         self.message = message
@@ -98,7 +90,11 @@ cdef class ZMQSink(object):
                 self.read()
         except zmq.ZMQError, e:
             if e.errno != zmq.EAGAIN:
+                self.close()
                 raise
+        except:
+            self.close()
+            raise
         else:
             self.stop_listen_read()
 
@@ -108,7 +104,11 @@ cdef class ZMQSink(object):
                 self.write()
         except zmq.ZMQError, e:
             if e.errno != zmq.EAGAIN:
+                self.close()
                 raise
+        except:
+            self.close()
+            raise
         else:
             self.stop_listen_write()
             self.on_readable()
