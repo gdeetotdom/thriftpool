@@ -11,6 +11,6 @@ def main():
 
 if __name__ == '__main__':
     setproctitle('[server]')
-    #main()
-    import cProfile
-    cProfile.runctx("main()", globals(), locals(), "server.prof")
+    main()
+    #import cProfile
+    #cProfile.runctx("main()", globals(), locals(), "server.prof")

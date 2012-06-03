@@ -1,9 +1,10 @@
-# cython: profile=True
+# cython: profile=False
 cimport cython
 from cpython cimport bool
 from libcpp.string cimport string
 import struct
 from gevent.hub import get_hub
+from gevent.socket import EAGAIN, error
 
 
 cdef enum States:
@@ -12,6 +13,10 @@ cdef enum States:
     WAIT_PROCESS = 2
     SEND_ANSWER = 3
     CLOSED = 4
+
+
+cdef extern from "sys/socket.h":
+    ssize_t send(int sockfd, char *msg, size_t len, int flags)
 
 
 cdef class SocketSource(object):
@@ -29,6 +34,7 @@ cdef class SocketSource(object):
     """
 
     cdef size_t len
+    cdef int fileno
     cdef string *message
     cdef States status
 
@@ -50,22 +56,22 @@ cdef class SocketSource(object):
 
     def __init__(self, socket, callback):
         assert callable(callback)
-        self.socket = socket
+        self.socket = socket._sock
+        self.fileno = self.socket.fileno()
         self.callback = callback
         self.format = struct.Struct('!i')
 
         self.__setup_events()
         self.start_listen_read()
 
-    cdef void __setup_events(self):
+    cpdef __setup_events(self):
         loop = get_hub().loop
         MAXPRI = loop.MAXPRI
         io = loop.io
-        fileno = self.socket.fileno()
 
-        self.__read_watcher = io(fileno, 1)
+        self.__read_watcher = io(self.fileno, 1)
         self.__read_watcher.priority = MAXPRI
-        self.__write_watcher = io(fileno, 2)
+        self.__write_watcher = io(self.fileno, 2)
         self.__write_watcher.priority = MAXPRI
 
     @cython.profile(False)
@@ -108,11 +114,15 @@ cdef class SocketSource(object):
         "Returns True if connection is ready."
         return self.status == WAIT_PROCESS
 
-    @cython.profile(False)
     cdef inline bytes content(self):
         return self.message.c_str()[:self.message.size()]
 
-    cdef void _read_len(self):
+    cdef inline void expunge(self, int sent):
+        cdef string s
+        s = self.message.substr(sent, self.message.size() - sent)
+        self.message.assign(s)
+
+    cpdef _read_len(self):
         """Reads length of request.
 
         It's really paranoic routine and it may be replaced by
@@ -141,7 +151,7 @@ cdef class SocketSource(object):
             self.message.clear()
             self.status = WAIT_MESSAGE
 
-    cdef void read(self):
+    cpdef read(self):
         """Reads data from stream and switch state."""
         cdef int read_length
         assert self.is_readable()
@@ -164,20 +174,26 @@ cdef class SocketSource(object):
             if self.message.size() == self.len:
                 self.status = WAIT_PROCESS
 
-    cdef void write(self):
+    cdef int send(self):
+        global errno
+        cdef int sent = send(self.fileno, self.message.c_str(),
+                             self.message.size(), 0)
+        if sent < 0:
+            raise error(errno, '')
+        return sent
+
+    cpdef write(self):
         """Writes data from socket and switch state."""
-        cdef string s
         assert self.is_writeable()
 
-        sent = self.socket.send(self.content())
+        sent = self.send()
+
         if sent == self.message.size():
             self.status = WAIT_LEN
             self.message.clear()
             self.len = 0
-
         else:
-            s = self.message.substr(sent, self.message.size() - sent)
-            self.message.assign(s)
+            self.expunge(sent)
 
     cpdef ready(self, bool all_ok, object message):
         """The ready can switch Connection to three states:
@@ -207,7 +223,7 @@ cdef class SocketSource(object):
             self.status = SEND_ANSWER
             self.start_listen_write()
 
-    cdef void close(self):
+    cpdef close(self):
         """Closes connection."""
         self.status = CLOSED
         self.stop_listen_read()
@@ -217,10 +233,15 @@ cdef class SocketSource(object):
     cpdef on_readable(self):
         assert self.is_readable(), "can't read from unreadable socket"
         try:
-            self.read()
+            while self.is_readable():
+                self.read()
             if self.is_ready():
                 self.stop_listen_read()
                 self.callback(self.content())
+        except error, e:
+            if e.errno != EAGAIN:
+                self.close()
+                raise
         except:
             self.close()
             raise
@@ -228,12 +249,17 @@ cdef class SocketSource(object):
     cpdef on_writable(self):
         assert self.is_writeable(), "can't write to unwritable socket"
         try:
-            self.write()
+            while self.is_writeable():
+                self.write()
             if self.is_readable():
                 self.stop_listen_write()
                 self.start_listen_read()
             elif self.is_closed():
                 self.stop_listen_write()
+        except error, e:
+            if e.errno != EAGAIN:
+                self.close()
+                raise
         except:
             self.close()
             raise

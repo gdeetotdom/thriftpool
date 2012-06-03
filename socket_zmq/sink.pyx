@@ -1,4 +1,4 @@
-# cython: profile=True
+# cython: profile=False
 cimport cython
 from cpython cimport bool
 from gevent.hub import get_hub
@@ -73,14 +73,14 @@ cdef class ZMQSink(object):
     cdef inline bool is_ready(self):
         return self.status == WAIT_MESSAGE
 
-    cpdef read(self):
+    cdef read(self):
         assert self.is_readable()
         self.message = self.socket.recv(zmq.NOBLOCK)
         self.callback(self.message)
         self.status = WAIT_MESSAGE
         self.message = None
 
-    cpdef write(self):
+    cdef write(self):
         assert self.is_writeable()
         self.socket.send(self.message, zmq.NOBLOCK)
         self.status = READ_REPLY

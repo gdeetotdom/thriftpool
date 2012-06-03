@@ -1,4 +1,4 @@
-# cython: profile=True
+# cython: profile=False
 cimport cython
 from cpython cimport bool
 from socket_zmq.source import SocketSource
