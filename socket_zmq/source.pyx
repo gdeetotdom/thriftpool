@@ -7,10 +7,6 @@ from gevent.hub import get_hub
 from gevent.socket import EAGAIN, error
 
 
-cdef extern from "sys/socket.h":
-    ssize_t send(int sockfd, char *msg, size_t len, int flags)
-
-
 cdef class SocketSource(object):
     """Basic class is represented connection.
 
@@ -154,19 +150,11 @@ cdef class SocketSource(object):
             if self.message.size() == self.len:
                 self.status = WAIT_PROCESS
 
-    cdef inline int _send(self):
-        global errno
-        cdef int sent = send(self.fileno, self.message.c_str(),
-                             self.message.size(), 0)
-        if sent < 0:
-            raise error(errno, '')
-        return sent
-
     cdef write(self):
         """Writes data from socket and switch state."""
         assert self.is_writeable()
 
-        cdef int sent = self._send()
+        sent = self.socket.send(self.content())
 
         if sent == self.message.size():
             self.status = WAIT_LEN
@@ -211,7 +199,7 @@ cdef class SocketSource(object):
             self.start_listen_write()
 
     cpdef on_readable(self):
-        assert self.is_readable(), "can't read from unreadable socket"
+        assert self.is_readable()
         try:
             while self.is_readable():
                 self.read()
@@ -227,7 +215,7 @@ cdef class SocketSource(object):
             raise
 
     cpdef on_writable(self):
-        assert self.is_writeable(), "can't write to unwritable socket"
+        assert self.is_writeable()
         try:
             while self.is_writeable():
                 self.write()

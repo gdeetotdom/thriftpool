@@ -41,7 +41,6 @@ cdef class SocketSource:
 
     cdef inline _read_len(self)
     cdef read(self)
-    cdef inline int _send(self)
     cdef write(self)
     cdef close(self)
 
