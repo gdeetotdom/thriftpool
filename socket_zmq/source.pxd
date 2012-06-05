@@ -1,5 +1,4 @@
 from cpython cimport bool
-from libcpp.string cimport string
 
 
 cdef enum States:
@@ -12,34 +11,39 @@ cdef enum States:
 
 cdef class SocketSource:
 
-    cdef size_t len
+    cdef int len
     cdef int fileno
-    cdef string *message
     cdef States status
 
+    cdef int recv_bytes
+    cdef int sent_bytes
+
     cdef object socket
-    cdef object format
     cdef object callback
+    cdef object format
 
-    cdef object __read_watcher
-    cdef object __write_watcher
+    cdef object message
+    cdef object recv_buffer
 
-    cpdef __setup_events(self)
+    cdef object read_watcher
+    cdef object write_watcher
+
+    cdef setup_events(self)
 
     cdef inline void start_listen_read(self)
     cdef inline void stop_listen_read(self)
     cdef inline void start_listen_write(self)
     cdef inline void stop_listen_write(self)
 
-    cdef inline bool is_writeable(self)
-    cdef inline bool is_readable(self)
-    cdef inline bool is_closed(self)
-    cdef inline bool is_ready(self)
+    cdef inline bint is_writeable(self)
+    cdef inline bint is_readable(self)
+    cdef inline bint is_closed(self)
+    cdef inline bint is_ready(self)
 
     cdef inline bytes content(self)
-    cdef inline void expunge(self, int sent)
+    cdef inline reset_recv_buffer(self, size)
 
-    cdef inline _read_len(self)
+    cdef inline read_length(self)
     cdef read(self)
     cdef write(self)
     cdef close(self)
