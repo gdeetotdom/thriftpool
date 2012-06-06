@@ -41,7 +41,7 @@ cdef class SocketSource:
     cdef inline bint is_ready(self)
 
     cdef inline bytes content(self)
-    cdef inline reset_recv_buffer(self, size)
+    cdef inline void reset_recv_buffer(self, int size)
 
     cdef inline read_length(self)
     cdef read(self)

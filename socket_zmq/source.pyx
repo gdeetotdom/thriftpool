@@ -5,6 +5,7 @@ from gevent.core import MAXPRI
 from gevent.hub import get_hub
 from gevent.socket import EAGAIN, error
 import struct
+from zmq.utils.buffers cimport viewfromobject_w, viewfromobject_r
 
 
 cdef class SocketSource(object):
@@ -89,8 +90,8 @@ cdef class SocketSource(object):
     cdef inline bytes content(self):
         return self.recv_buffer.tobytes()
 
-    cdef inline reset_recv_buffer(self, size):
-        self.recv_buffer = memoryview(bytearray(size))
+    cdef inline void reset_recv_buffer(self, int size):
+        self.recv_buffer = viewfromobject_w(bytearray(size))
 
     @cython.locals(readed=cython.int)
     cdef inline read_length(self):
@@ -142,7 +143,8 @@ cdef class SocketSource(object):
         """Writes data from socket and switch state."""
         assert self.is_writeable() and self.message is not None
 
-        sent = self.socket.send(buffer(self.message, self.sent_bytes))
+        sent = self.socket.send(
+                        viewfromobject_r(self.message)[self.sent_bytes:])
         self.sent_bytes += sent
 
         if self.sent_bytes == self.len:
@@ -198,10 +200,8 @@ cdef class SocketSource(object):
         except error, e:
             if e.errno != EAGAIN:
                 self.close()
-                raise
         except:
             self.close()
-            raise
 
     cpdef on_writable(self):
         assert self.is_writeable()
@@ -216,7 +216,5 @@ cdef class SocketSource(object):
         except error, e:
             if e.errno != EAGAIN:
                 self.close()
-                raise
         except:
             self.close()
-            raise
