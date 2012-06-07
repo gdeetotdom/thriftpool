@@ -4,6 +4,7 @@ from cpython cimport bool
 from gevent.hub import get_hub
 import zmq
 from zmq.core.socket cimport Socket as ZMQSocket
+from zmq.core.message cimport Frame
 
 
 cdef class ZMQSink(object):
@@ -12,7 +13,7 @@ cdef class ZMQSink(object):
         assert socket.getsockopt(zmq.TYPE) == zmq.REQ
         self.socket = socket
         self.callback = callback
-        self.message = None
+        self.request = None
         self.status = WAIT_MESSAGE
         self.__setup_events()
 
@@ -48,29 +49,29 @@ cdef class ZMQSink(object):
         self.__write_watcher.stop()
 
     @cython.profile(False)
-    cdef inline bool is_writeable(self):
+    cdef inline bint is_writeable(self):
         return self.status == SEND_REQUEST
 
     @cython.profile(False)
-    cdef inline bool is_readable(self):
+    cdef inline bint is_readable(self):
         return self.status == READ_REPLY
 
     @cython.profile(False)
-    cdef inline bool is_ready(self):
+    cdef inline bint is_ready(self):
         return self.status == WAIT_MESSAGE
 
+    @cython.locals(response=Frame)
     cdef read(self):
         assert self.is_readable()
-        self.message = self.socket.recv(zmq.NOBLOCK)
-        self.callback(self.message)
+        response = self.socket.recv(zmq.NOBLOCK, False, False)
+        self.callback(response)
         self.status = WAIT_MESSAGE
-        self.message = None
 
     cdef write(self):
         assert self.is_writeable()
-        self.socket.send(self.message, zmq.NOBLOCK)
+        self.socket.send(self.request, zmq.NOBLOCK)
         self.status = READ_REPLY
-        self.message = None
+        self.request = None
 
     cdef close(self):
         self.status == CLOSED
@@ -78,10 +79,10 @@ cdef class ZMQSink(object):
         self.stop_listen_write()
         self.socket.close()
 
-    cpdef ready(self, object message):
+    cpdef ready(self, bytes request):
         assert self.is_ready()
         self.status = SEND_REQUEST
-        self.message = message
+        self.request = request
         self.start_listen_write()
 
     cpdef on_readable(self):

@@ -1,4 +1,10 @@
 from cpython cimport bool
+from zmq.core.message cimport Frame
+
+
+cdef extern from "Python.h":
+    object PyByteArray_FromStringAndSize(char *v, Py_ssize_t len)
+    int PyByteArray_Resize(object bytearray, Py_ssize_t len)
 
 
 cdef enum States:
@@ -23,7 +29,7 @@ cdef class SocketSource:
     cdef object format
 
     cdef object message
-    cdef object recv_buffer
+    cdef object view
 
     cdef object read_watcher
     cdef object write_watcher
@@ -40,14 +46,11 @@ cdef class SocketSource:
     cdef inline bint is_closed(self)
     cdef inline bint is_ready(self)
 
-    cdef inline bytes content(self)
-    cdef inline void reset_recv_buffer(self, int size)
-
-    cdef inline read_length(self)
+    cdef int read_length(self)
     cdef read(self)
     cdef write(self)
     cdef close(self)
 
-    cpdef object ready(self, bool all_ok, object message)
+    cpdef ready(self, bool all_ok, Frame message)
     cpdef on_readable(self)
     cpdef on_writable(self)

@@ -7,6 +7,7 @@ from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
 from thrift.transport import TTransport
 from zmq.devices import ThreadDevice
 import logging
+import multiprocessing
 
 
 class Server(StreamServer):
@@ -69,7 +70,7 @@ class Worker(Greenlet):
 class Factory(object):
 
     def __init__(self, backend):
-        self.context = zmq.Context()
+        self.context = zmq.Context(multiprocessing.cpu_count())
 
         self.frontend = "inproc://frontend_%s" % id(self)
         self.backend = backend

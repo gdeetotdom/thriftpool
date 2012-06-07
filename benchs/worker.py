@@ -5,7 +5,7 @@ from setproctitle import setproctitle
 
 
 class BrokerHandler:
-    a = '0' * 2048
+    a = '0' * 1024
 
     def execute(self, task):
         return Result(self.a)

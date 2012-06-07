@@ -1,11 +1,29 @@
 # cython: profile=True
 cimport cython
 from cpython cimport bool
+from cpython.bytes cimport PyBytes_Format, PyBytes_AsString
 from gevent.core import MAXPRI
 from gevent.hub import get_hub
 from gevent.socket import EAGAIN, error
 import struct
 from zmq.utils.buffers cimport viewfromobject_w, viewfromobject_r
+from zmq.core.message cimport Frame
+
+
+cdef inline unsigned int switch_endianess(unsigned int i):
+    cdef unsigned int j
+    cdef unsigned int ret = 0
+    for j from 0 <= j < sizeof(int):
+        (<unsigned char*>&ret)[j] = (<unsigned char*>&i)[sizeof(int)-j-1]
+    return ret
+
+
+cdef inline unsigned int unpack(char *c):
+    cdef unsigned int j
+    cdef unsigned int ret = 0
+    for j from 0 <= j < sizeof(int):
+        (<unsigned char*>&ret)[j] = c[sizeof(int)-j-1]
+    return ret
 
 
 cdef class SocketSource(object):
@@ -23,15 +41,14 @@ cdef class SocketSource(object):
     """
 
     def __cinit__(self):
-        """We need to allocate std::string. Us it as buffer."""
         self.len = 0
         self.recv_bytes = 0
         self.sent_bytes = 0
         self.status = WAIT_LEN
 
-    def __init__(self, socket, callback):
+    def __init__(self, object socket, object callback):
         assert callable(callback)
-        self.recv_buffer = None
+        self.view = viewfromobject_w(PyByteArray_FromStringAndSize(NULL, 8192))
         self.message = None
         self.format = struct.Struct('!i')
         self.socket = socket._sock
@@ -64,17 +81,14 @@ cdef class SocketSource(object):
 
     @cython.profile(False)
     cdef inline void stop_listen_write(self):
-        """Stop listen write events."""
         self.write_watcher.stop()
 
     @cython.profile(False)
     cdef inline bint is_writeable(self):
-        "Returns True if connection should be added to write list of select."
         return self.status == SEND_ANSWER
 
     @cython.profile(False)
     cdef inline bint is_readable(self):
-        "Returns True if connection should be added to read list of select."
         return self.status == WAIT_LEN or self.status == WAIT_MESSAGE
 
     @cython.profile(False)
@@ -87,64 +101,61 @@ cdef class SocketSource(object):
         "Returns True if connection is ready."
         return self.status == WAIT_PROCESS
 
-    cdef inline bytes content(self):
-        return self.recv_buffer.tobytes()
-
-    cdef inline void reset_recv_buffer(self, int size):
-        self.recv_buffer = viewfromobject_w(bytearray(size))
-
-    @cython.locals(readed=cython.int)
-    cdef inline read_length(self):
+    @cython.locals(received=cython.int)
+    cdef int read_length(self):
         """Reads length of request."""
-        read = self.socket.recv(4)
-        readed = len(read)
+        received = self.socket.recv_into(self.view[0:])
 
-        if readed == 0:
+        if received == 0:
             # if we read 0 bytes and self.message is empty, it means client
             # close connection
             self.close()
-            return
+            return 0
 
-        assert readed == 4, 'message length can\'t be read'
+        assert received >= 4, "message length can't be read"
 
-        self.len, = self.format.unpack(read)
+        self.len, = self.format.unpack(self.view[:4].tobytes())
 
-        assert self.len >= 0, "negative frame size, it seems client" \
+        assert self.len > 0, "negative or empty frame size, it seems client" \
             " doesn't use FramedTransport"
-        assert self.len != 0, "empty frame, it's really strange"
 
-        self.reset_recv_buffer(self.len)
+        buf = self.view[4:].tobytes()
+        self.view = viewfromobject_w(
+                        PyByteArray_FromStringAndSize(<char *>buf, self.len))
         self.status = WAIT_MESSAGE
+
+        return (received - 4)
 
     @cython.locals(readed=cython.int)
     cdef read(self):
         """Reads data from stream and switch state."""
         assert self.is_readable()
 
-        if self.status == WAIT_LEN:
-            self.read_length()
+        readed = 0
 
-            # try to read rest part of buffer
-            if self.status == WAIT_MESSAGE:
-                self.read()
+        if self.status == WAIT_LEN:
+            readed = self.read_length()
+
+            if not self.is_readable():
+                return
 
         elif self.status == WAIT_MESSAGE:
-            readed = self.socket.recv_into(self.recv_buffer[self.recv_bytes:],
+            readed = self.socket.recv_into(self.view[self.recv_bytes:],
                                            self.len - self.recv_bytes)
-            assert readed > 0, "can't read frame from socket "
 
-            self.recv_bytes += readed
-            if self.recv_bytes == self.len:
-                self.recv_bytes = 0
-                self.status = WAIT_PROCESS
+        assert readed > 0, "can't read frame from socket"
+
+        self.recv_bytes += readed
+        if self.recv_bytes == self.len:
+            self.recv_bytes = 0
+            self.status = WAIT_PROCESS
 
     @cython.locals(sent=cython.int)
     cdef write(self):
         """Writes data from socket and switch state."""
-        assert self.is_writeable() and self.message is not None
+        assert self.is_writeable()
 
-        sent = self.socket.send(
-                        viewfromobject_r(self.message)[self.sent_bytes:])
+        sent = self.socket.send(self.message[self.sent_bytes:])
         self.sent_bytes += sent
 
         if self.sent_bytes == self.len:
@@ -160,7 +171,7 @@ cdef class SocketSource(object):
         self.stop_listen_write()
         self.socket.close()
 
-    cpdef object ready(self, bool all_ok, object message):
+    cpdef ready(self, bool all_ok, Frame message):
         """The ready can switch Connection to three states:
 
             WAIT_LEN if request was oneway.
@@ -183,9 +194,9 @@ cdef class SocketSource(object):
             self.status = WAIT_LEN
             self.start_listen_read()
         else:
-            self.message = '{0}{1}'.format(self.format.pack(self.len),
-                                           message)
-            self.len = len(self.message)
+            self.message = viewfromobject_r(PyBytes_Format('%s%s',
+                                (self.format.pack(self.len), message.bytes)))
+            self.len += 4
             self.status = SEND_ANSWER
             self.start_listen_write()
 
@@ -196,7 +207,7 @@ cdef class SocketSource(object):
                 self.read()
             if self.is_ready():
                 self.stop_listen_read()
-                self.callback(self.content())
+                self.callback(self.view.tobytes())
         except error, e:
             if e.errno != EAGAIN:
                 self.close()
