@@ -18,5 +18,5 @@ cdef class Connection(object):
     cpdef object on_request(self, bytes message):
         self.sink.ready(message)
 
-    cpdef object on_response(self, Frame message, bool success=True):
+    cpdef object on_response(self, bytes message, bool success=True):
         self.source.ready(success, message)

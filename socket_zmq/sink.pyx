@@ -60,10 +60,10 @@ cdef class ZMQSink(object):
     cdef inline bint is_ready(self):
         return self.status == WAIT_MESSAGE
 
-    @cython.locals(response=Frame)
+    @cython.locals(response=cython.bytes)
     cdef read(self):
         assert self.is_readable()
-        response = self.socket.recv(zmq.NOBLOCK, False, False)
+        response = self.socket.recv(zmq.NOBLOCK)
         self.callback(response)
         self.status = WAIT_MESSAGE
 

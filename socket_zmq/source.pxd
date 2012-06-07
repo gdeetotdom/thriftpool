@@ -4,7 +4,7 @@ from zmq.core.message cimport Frame
 
 cdef extern from "Python.h":
     object PyByteArray_FromStringAndSize(char *v, Py_ssize_t len)
-    int PyByteArray_Resize(object bytearray, Py_ssize_t len)
+    object PyMemoryView_FromObject(object)
 
 
 cdef enum States:
@@ -51,6 +51,6 @@ cdef class SocketSource:
     cdef write(self)
     cdef close(self)
 
-    cpdef ready(self, bool all_ok, Frame message)
+    cpdef ready(self, bool all_ok, bytes message)
     cpdef on_readable(self)
     cpdef on_writable(self)

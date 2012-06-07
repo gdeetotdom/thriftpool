@@ -6,7 +6,6 @@ from gevent.core import MAXPRI
 from gevent.hub import get_hub
 from gevent.socket import EAGAIN, error
 import struct
-from zmq.utils.buffers cimport viewfromobject_w, viewfromobject_r
 from zmq.core.message cimport Frame
 
 
@@ -48,7 +47,7 @@ cdef class SocketSource(object):
 
     def __init__(self, object socket, object callback):
         assert callable(callback)
-        self.view = viewfromobject_w(PyByteArray_FromStringAndSize(NULL, 8192))
+        self.view = None
         self.message = None
         self.format = struct.Struct('!i')
         self.socket = socket._sock
@@ -104,7 +103,8 @@ cdef class SocketSource(object):
     @cython.locals(received=cython.int)
     cdef int read_length(self):
         """Reads length of request."""
-        received = self.socket.recv_into(self.view[0:])
+        buf = PyMemoryView_FromObject(PyByteArray_FromStringAndSize(NULL, 8192))
+        received = self.socket.recv_into(buf)
 
         if received == 0:
             # if we read 0 bytes and self.message is empty, it means client
@@ -114,14 +114,15 @@ cdef class SocketSource(object):
 
         assert received >= 4, "message length can't be read"
 
-        self.len, = self.format.unpack(self.view[:4].tobytes())
+        self.len, = self.format.unpack(buf[:4].tobytes())
 
         assert self.len > 0, "negative or empty frame size, it seems client" \
             " doesn't use FramedTransport"
 
-        buf = self.view[4:].tobytes()
-        self.view = viewfromobject_w(
-                        PyByteArray_FromStringAndSize(<char *>buf, self.len))
+        self.view = PyMemoryView_FromObject(
+                        PyByteArray_FromStringAndSize(NULL, self.len))
+        self.view[0:] = buf[4:received]
+
         self.status = WAIT_MESSAGE
 
         return (received - 4)
@@ -135,9 +136,6 @@ cdef class SocketSource(object):
 
         if self.status == WAIT_LEN:
             readed = self.read_length()
-
-            if not self.is_readable():
-                return
 
         elif self.status == WAIT_MESSAGE:
             readed = self.socket.recv_into(self.view[self.recv_bytes:],
@@ -171,7 +169,7 @@ cdef class SocketSource(object):
         self.stop_listen_write()
         self.socket.close()
 
-    cpdef ready(self, bool all_ok, Frame message):
+    cpdef ready(self, bool all_ok, bytes message):
         """The ready can switch Connection to three states:
 
             WAIT_LEN if request was oneway.
@@ -192,10 +190,9 @@ cdef class SocketSource(object):
             # it was a oneway request, do not write answer
             self.message = None
             self.status = WAIT_LEN
-            self.start_listen_read()
         else:
-            self.message = viewfromobject_r(PyBytes_Format('%s%s',
-                                (self.format.pack(self.len), message.bytes)))
+            self.message = PyMemoryView_FromObject(PyBytes_Format('%s%s',
+                                (self.format.pack(self.len), message)))
             self.len += 4
             self.status = SEND_ANSWER
             self.start_listen_write()
@@ -206,7 +203,6 @@ cdef class SocketSource(object):
             while self.is_readable():
                 self.read()
             if self.is_ready():
-                self.stop_listen_read()
                 self.callback(self.view.tobytes())
         except error, e:
             if e.errno != EAGAIN:
@@ -220,9 +216,6 @@ cdef class SocketSource(object):
             while self.is_writeable():
                 self.write()
             if self.is_readable():
-                self.stop_listen_write()
-                self.start_listen_read()
-            elif self.is_closed():
                 self.stop_listen_write()
         except error, e:
             if e.errno != EAGAIN:
