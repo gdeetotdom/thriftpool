@@ -3,8 +3,24 @@ from zmq.core.message cimport Frame
 
 
 cdef extern from "Python.h":
+    ctypedef int Py_ssize_t
+    ctypedef struct PyMemoryViewObject:
+        pass
+    ctypedef struct Py_buffer:
+        void *buf
+        Py_ssize_t len
+        int readonly
+        char *format
+        int ndim
+        Py_ssize_t *shape
+        Py_ssize_t *strides
+        Py_ssize_t *suboffsets
+        Py_ssize_t itemsize
+        void *internal
+
     object PyByteArray_FromStringAndSize(char *v, Py_ssize_t len)
     object PyMemoryView_FromObject(object)
+    Py_buffer *PyMemoryView_GET_BUFFER(object obj)
 
 
 cdef enum States:
@@ -29,7 +45,8 @@ cdef class SocketSource:
     cdef object format
 
     cdef object message
-    cdef object view
+    cdef object read_view
+    cdef object static_read_view
 
     cdef object read_watcher
     cdef object write_watcher
@@ -46,7 +63,7 @@ cdef class SocketSource:
     cdef inline bint is_closed(self)
     cdef inline bint is_ready(self)
 
-    cdef int read_length(self)
+    cdef read_length(self)
     cdef read(self)
     cdef write(self)
     cdef close(self)

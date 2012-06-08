@@ -9,19 +9,22 @@ import struct
 from zmq.core.message cimport Frame
 
 
-cdef inline unsigned int switch_endianess(unsigned int i):
+LENGTH_SIZE = 4
+
+
+cdef inline unsigned int pack(unsigned int i):
     cdef unsigned int j
     cdef unsigned int ret = 0
-    for j from 0 <= j < sizeof(int):
-        (<unsigned char*>&ret)[j] = (<unsigned char*>&i)[sizeof(int)-j-1]
+    for j from 0 <= j < LENGTH_SIZE:
+        (<unsigned char *>&ret)[j] = (<unsigned char *>&i)[LENGTH_SIZE - j - 1]
     return ret
 
 
-cdef inline unsigned int unpack(char *c):
+cdef inline unsigned int unpack(char * c):
     cdef unsigned int j
     cdef unsigned int ret = 0
-    for j from 0 <= j < sizeof(int):
-        (<unsigned char*>&ret)[j] = c[sizeof(int)-j-1]
+    for j from 0 <= j < LENGTH_SIZE:
+        (<unsigned char *>&ret)[j] = c[LENGTH_SIZE - j - 1]
     return ret
 
 
@@ -47,7 +50,9 @@ cdef class SocketSource(object):
 
     def __init__(self, object socket, object callback):
         assert callable(callback)
-        self.view = None
+        self.static_read_view = PyMemoryView_FromObject(
+                                    PyByteArray_FromStringAndSize(NULL, 8192))
+        self.read_view = None
         self.message = None
         self.format = struct.Struct('!i')
         self.socket = socket._sock
@@ -101,10 +106,9 @@ cdef class SocketSource(object):
         return self.status == WAIT_PROCESS
 
     @cython.locals(received=cython.int)
-    cdef int read_length(self):
+    cdef read_length(self):
         """Reads length of request."""
-        buf = PyMemoryView_FromObject(PyByteArray_FromStringAndSize(NULL, 8192))
-        received = self.socket.recv_into(buf)
+        received = self.socket.recv_into(self.static_read_view)
 
         if received == 0:
             # if we read 0 bytes and self.message is empty, it means client
@@ -112,20 +116,22 @@ cdef class SocketSource(object):
             self.close()
             return 0
 
-        assert received >= 4, "message length can't be read"
+        assert received >= LENGTH_SIZE, "message length can't be read"
 
-        self.len, = self.format.unpack(buf[:4].tobytes())
+        cdef Py_buffer * buf = PyMemoryView_GET_BUFFER(
+                                        self.static_read_view[:LENGTH_SIZE])
+        self.len = unpack(<char *>buf.buf)
 
         assert self.len > 0, "negative or empty frame size, it seems client" \
             " doesn't use FramedTransport"
 
-        self.view = PyMemoryView_FromObject(
+        self.read_view = PyMemoryView_FromObject(
                         PyByteArray_FromStringAndSize(NULL, self.len))
-        self.view[0:] = buf[4:received]
+        self.read_view[0:] = self.static_read_view[LENGTH_SIZE:received]
 
         self.status = WAIT_MESSAGE
 
-        return (received - 4)
+        return received - LENGTH_SIZE
 
     @cython.locals(readed=cython.int)
     cdef read(self):
@@ -137,8 +143,11 @@ cdef class SocketSource(object):
         if self.status == WAIT_LEN:
             readed = self.read_length()
 
+            if self.is_closed():
+                return
+
         elif self.status == WAIT_MESSAGE:
-            readed = self.socket.recv_into(self.view[self.recv_bytes:],
+            readed = self.socket.recv_into(self.read_view[self.recv_bytes:],
                                            self.len - self.recv_bytes)
 
         assert readed > 0, "can't read frame from socket"
@@ -191,9 +200,11 @@ cdef class SocketSource(object):
             self.message = None
             self.status = WAIT_LEN
         else:
-            self.message = PyMemoryView_FromObject(PyBytes_Format('%s%s',
-                                (self.format.pack(self.len), message)))
-            self.len += 4
+            self.message = PyMemoryView_FromObject(
+                PyByteArray_FromStringAndSize(NULL, self.len + LENGTH_SIZE))
+            self.message[:LENGTH_SIZE] = self.format.pack(self.len)
+            self.message[LENGTH_SIZE:] = message
+            self.len = len(self.message)
             self.status = SEND_ANSWER
             self.start_listen_write()
 
@@ -203,12 +214,14 @@ cdef class SocketSource(object):
             while self.is_readable():
                 self.read()
             if self.is_ready():
-                self.callback(self.view.tobytes())
+                self.callback(self.read_view.tobytes())
         except error, e:
             if e.errno != EAGAIN:
                 self.close()
+                raise
         except:
             self.close()
+            raise
 
     cpdef on_writable(self):
         assert self.is_writeable()
@@ -220,5 +233,7 @@ cdef class SocketSource(object):
         except error, e:
             if e.errno != EAGAIN:
                 self.close()
+                raise
         except:
             self.close()
+            raise
