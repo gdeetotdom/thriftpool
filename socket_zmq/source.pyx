@@ -5,6 +5,7 @@ from gevent.core import MAXPRI, MINPRI
 from gevent.socket import EAGAIN, error
 from struct import unpack_from, pack, calcsize
 from zmq.core.message cimport Frame
+from socket_zmq.connection cimport Connection
 
 
 cdef object LENGTH_FORMAT = '!i'
@@ -32,14 +33,14 @@ cdef class SocketSource(object):
         self.sent_bytes = 0
         self.status = WAIT_LEN
 
-    def __init__(self, object loop, object socket, object callback):
+    def __init__(self, object loop, object socket, Connection connection):
         self.loop = loop
         self.socket = socket._sock
         self.static_read_view = PyMemoryView_FromObject(
                             PyByteArray_FromStringAndSize(NULL, BUFFER_SIZE))
         self.read_view = None
         self.write_view = None
-        self.callback = callback
+        self.connection = connection
         self.setup_events()
         self.start_listen_read()
 
@@ -89,7 +90,7 @@ cdef class SocketSource(object):
         return self.status == WAIT_PROCESS
 
     @cython.locals(received=cython.int, message_length=cython.int)
-    cdef int read_length(self) except *:
+    cdef inline int read_length(self) except *:
         """Reads length of request."""
         static_read_view = self.static_read_view
         received = self.socket.recv_into(static_read_view, BUFFER_SIZE)
@@ -118,7 +119,7 @@ cdef class SocketSource(object):
         return received - LENGTH_SIZE
 
     @cython.locals(readed=cython.int)
-    cdef void read(self) except *:
+    cdef inline void read(self) except *:
         """Reads data from stream and switch state."""
         assert self.is_readable()
 
@@ -141,7 +142,7 @@ cdef class SocketSource(object):
             self.status = WAIT_PROCESS
 
     @cython.locals(sent=cython.int)
-    cdef void write(self) except *:
+    cdef inline void write(self) except *:
         """Writes data from socket and switch state."""
         assert self.is_writeable()
 
@@ -163,7 +164,7 @@ cdef class SocketSource(object):
         self.socket.close()
 
     @cython.locals(message_length=cython.int)
-    cpdef ready(self, bool all_ok, bytes message):
+    cdef void ready(self, bool all_ok, bytes message) except *:
         """The ready can switch Connection to three states:
 
             WAIT_LEN if request was oneway.
@@ -202,7 +203,7 @@ cdef class SocketSource(object):
             while self.is_readable():
                 self.read()
             if self.is_ready():
-                self.callback(self.read_view.tobytes())
+                self.connection.on_request(self.read_view)
         except error, e:
             if e.errno != EAGAIN:
                 self.close()

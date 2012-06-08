@@ -1,26 +1,12 @@
 from cpython cimport bool
 from zmq.core.message cimport Frame
+from socket_zmq.connection cimport Connection
 
 
 cdef extern from "Python.h":
     ctypedef int Py_ssize_t
-    ctypedef struct PyMemoryViewObject:
-        pass
-    ctypedef struct Py_buffer:
-        void *buf
-        Py_ssize_t len
-        int readonly
-        char *format
-        int ndim
-        Py_ssize_t *shape
-        Py_ssize_t *strides
-        Py_ssize_t *suboffsets
-        Py_ssize_t itemsize
-        void *internal
-
     object PyByteArray_FromStringAndSize(char *v, Py_ssize_t len)
     object PyMemoryView_FromObject(object)
-    Py_buffer *PyMemoryView_GET_BUFFER(object obj)
 
 
 cdef enum States:
@@ -40,7 +26,7 @@ cdef class SocketSource:
     cdef int sent_bytes
 
     cdef object socket
-    cdef object callback
+    cdef Connection connection
     cdef object loop
 
     cdef object write_view
@@ -61,11 +47,11 @@ cdef class SocketSource:
     cdef inline bint is_closed(self)
     cdef inline bint is_ready(self)
 
-    cdef int read_length(self) except -1
-    cdef void read(self) except *
-    cdef void write(self) except *
+    cdef inline int read_length(self) except -1
+    cdef inline void read(self) except *
+    cdef inline void write(self) except *
     cdef close(self)
 
-    cpdef ready(self, bool all_ok, bytes message)
+    cdef void ready(self, bool all_ok, bytes message) except *
     cpdef on_readable(self)
     cpdef on_writable(self)

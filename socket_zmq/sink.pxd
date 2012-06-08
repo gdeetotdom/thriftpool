@@ -1,4 +1,5 @@
 from zmq.core.socket cimport Socket
+from socket_zmq.connection cimport Connection
 
 
 cdef enum States:
@@ -11,8 +12,8 @@ cdef enum States:
 cdef class ZMQSink:
 
     cdef Socket socket
-    cdef object callback
-    cdef bytes request
+    cdef Connection connection
+    cdef object request
     cdef States status
     cdef object loop
 
@@ -30,10 +31,10 @@ cdef class ZMQSink:
     cdef inline bint is_ready(self)
     cdef inline bint is_closed(self)
 
-    cdef read(self)
-    cdef write(self)
+    cdef inline void read(self) except *
+    cdef inline void write(self) except *
     cdef close(self)
 
-    cpdef ready(self, bytes request)
+    cdef void ready(self, object request) except *
     cpdef on_readable(self)
     cpdef on_writable(self)

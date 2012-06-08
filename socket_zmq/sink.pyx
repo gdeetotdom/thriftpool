@@ -1,16 +1,17 @@
 cimport cython
 from cpython cimport bool
 from gevent.core import MAXPRI, MINPRI
-import zmq
+from zmq import TYPE, REQ, NOBLOCK, EAGAIN, FD, ZMQError
+from socket_zmq.connection cimport Connection
 
 
 cdef class ZMQSink(object):
 
-    def __init__(self, object loop, object socket, object callback):
-        assert socket.getsockopt(zmq.TYPE) == zmq.REQ
+    def __init__(self, object loop, object socket, Connection connection):
+        assert socket.getsockopt(TYPE) == REQ
         self.loop = loop
         self.socket = socket
-        self.callback = callback
+        self.connection = connection
         self.request = None
         self.status = WAIT_MESSAGE
         self.setup_events()
@@ -18,7 +19,7 @@ cdef class ZMQSink(object):
     @cython.locals(fileno=cython.int)
     cdef inline void setup_events(self):
         io = self.loop.io
-        fileno = self.socket.getsockopt(zmq.FD)
+        fileno = self.socket.getsockopt(FD)
 
         self.read_watcher = io(fileno, 1, priority=MINPRI)
         self.write_watcher = io(fileno, 2, priority=MAXPRI)
@@ -60,17 +61,16 @@ cdef class ZMQSink(object):
         return self.status == CLOSED
 
     @cython.locals(response=cython.bytes)
-    cdef read(self):
+    cdef void read(self) except *:
         assert self.is_readable()
-        response = self.socket.recv(zmq.NOBLOCK)
-        self.callback(response)
+        response = self.socket.recv(NOBLOCK)
+        self.connection.on_response(response)
         self.status = WAIT_MESSAGE
 
-    cdef write(self):
+    cdef inline void write(self) except *:
         assert self.is_writeable()
-        self.socket.send(self.request, zmq.NOBLOCK)
+        self.socket.send(self.request, NOBLOCK)
         self.status = READ_REPLY
-        self.request = None
 
     cdef close(self):
         assert not self.is_closed()
@@ -79,7 +79,7 @@ cdef class ZMQSink(object):
         self.stop_listen_write()
         self.socket.close()
 
-    cpdef ready(self, bytes request):
+    cdef inline void ready(self, object request) except *:
         assert self.is_ready()
         self.status = SEND_REQUEST
         self.request = request
@@ -89,8 +89,8 @@ cdef class ZMQSink(object):
         try:
             while self.is_readable():
                 self.read()
-        except zmq.ZMQError, e:
-            if e.errno != zmq.EAGAIN:
+        except ZMQError, e:
+            if e.errno != EAGAIN:
                 self.close()
                 raise
         except:
@@ -103,8 +103,8 @@ cdef class ZMQSink(object):
         try:
             while self.is_writeable():
                 self.write()
-        except zmq.ZMQError, e:
-            if e.errno != zmq.EAGAIN:
+        except ZMQError, e:
+            if e.errno != EAGAIN:
                 self.close()
                 raise
         except:
