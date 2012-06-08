@@ -1,52 +1,47 @@
-# cython: profile=True
 cimport cython
 from cpython cimport bool
-from gevent.hub import get_hub
+from gevent.core import MAXPRI, MINPRI
 import zmq
-from zmq.core.socket cimport Socket as ZMQSocket
-from zmq.core.message cimport Frame
 
 
 cdef class ZMQSink(object):
 
-    def __init__(self, socket, callback):
+    def __init__(self, object loop, object socket, object callback):
         assert socket.getsockopt(zmq.TYPE) == zmq.REQ
+        self.loop = loop
         self.socket = socket
         self.callback = callback
         self.request = None
         self.status = WAIT_MESSAGE
-        self.__setup_events()
+        self.setup_events()
 
-    cdef __setup_events(self):
-        loop = get_hub().loop
-        MAXPRI = loop.MAXPRI
-        io = loop.io
+    @cython.locals(fileno=cython.int)
+    cdef inline void setup_events(self):
+        io = self.loop.io
         fileno = self.socket.getsockopt(zmq.FD)
 
-        self.__read_watcher = io(fileno, 1)
-        self.__read_watcher.priority = MAXPRI
-        self.__write_watcher = io(fileno, 2)
-        self.__write_watcher.priority = MAXPRI
+        self.read_watcher = io(fileno, 1, priority=MINPRI)
+        self.write_watcher = io(fileno, 2, priority=MAXPRI)
 
     @cython.profile(False)
     cdef inline void start_listen_read(self):
         """Start listen read events."""
-        self.__read_watcher.start(self.on_readable)
+        self.read_watcher.start(self.on_readable)
 
     @cython.profile(False)
     cdef inline void stop_listen_read(self):
         """Stop listen read events."""
-        self.__read_watcher.stop()
+        self.read_watcher.stop()
 
     @cython.profile(False)
     cdef inline void start_listen_write(self):
         """Start listen write events."""
-        self.__write_watcher.start(self.on_writable)
+        self.write_watcher.start(self.on_writable)
 
     @cython.profile(False)
     cdef inline void stop_listen_write(self):
         """Stop listen write events."""
-        self.__write_watcher.stop()
+        self.write_watcher.stop()
 
     @cython.profile(False)
     cdef inline bint is_writeable(self):
@@ -59,6 +54,10 @@ cdef class ZMQSink(object):
     @cython.profile(False)
     cdef inline bint is_ready(self):
         return self.status == WAIT_MESSAGE
+
+    @cython.profile(False)
+    cdef inline bint is_closed(self):
+        return self.status == CLOSED
 
     @cython.locals(response=cython.bytes)
     cdef read(self):
@@ -74,6 +73,7 @@ cdef class ZMQSink(object):
         self.request = None
 
     cdef close(self):
+        assert not self.is_closed()
         self.status == CLOSED
         self.stop_listen_read()
         self.stop_listen_write()

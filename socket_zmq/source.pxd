@@ -33,26 +33,24 @@ cdef enum States:
 
 cdef class SocketSource:
 
-    cdef int len
-    cdef int fileno
     cdef States status
 
+    cdef int len
     cdef int recv_bytes
     cdef int sent_bytes
 
     cdef object socket
     cdef object callback
-    cdef object format
+    cdef object loop
 
-    cdef object message
+    cdef object write_view
     cdef object read_view
     cdef object static_read_view
 
     cdef object read_watcher
     cdef object write_watcher
 
-    cdef setup_events(self)
-
+    cdef inline void setup_events(self)
     cdef inline void start_listen_read(self)
     cdef inline void stop_listen_read(self)
     cdef inline void start_listen_write(self)
@@ -63,9 +61,9 @@ cdef class SocketSource:
     cdef inline bint is_closed(self)
     cdef inline bint is_ready(self)
 
-    cdef read_length(self)
-    cdef read(self)
-    cdef write(self)
+    cdef int read_length(self) except -1
+    cdef void read(self) except *
+    cdef void write(self) except *
     cdef close(self)
 
     cpdef ready(self, bool all_ok, bytes message)

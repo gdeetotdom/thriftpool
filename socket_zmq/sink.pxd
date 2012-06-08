@@ -1,6 +1,4 @@
-from zmq.core.socket cimport Socket as ZMQSocket
-from zmq.core.message cimport Frame
-from cpython cimport bool
+from zmq.core.socket cimport Socket
 
 
 cdef enum States:
@@ -12,16 +10,16 @@ cdef enum States:
 
 cdef class ZMQSink:
 
-    cdef ZMQSocket socket
+    cdef Socket socket
     cdef object callback
     cdef bytes request
     cdef States status
+    cdef object loop
 
-    cdef object __read_watcher
-    cdef object __write_watcher
+    cdef object read_watcher
+    cdef object write_watcher
 
-    cdef __setup_events(self)
-    
+    cdef inline void setup_events(self)
     cdef inline void start_listen_read(self)
     cdef inline void stop_listen_read(self)
     cdef inline void start_listen_write(self)
@@ -30,6 +28,7 @@ cdef class ZMQSink:
     cdef inline bint is_writeable(self)
     cdef inline bint is_readable(self)
     cdef inline bint is_ready(self)
+    cdef inline bint is_closed(self)
 
     cdef read(self)
     cdef write(self)
