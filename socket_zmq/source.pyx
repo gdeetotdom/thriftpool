@@ -1,3 +1,4 @@
+# cython: profile=True
 cimport cython
 from cpython cimport bool
 from cpython.bytes cimport PyBytes_Format, PyBytes_AsString
@@ -33,9 +34,9 @@ cdef class SocketSource(object):
         self.sent_bytes = 0
         self.status = WAIT_LEN
 
-    def __init__(self, object loop, object socket, Connection connection):
-        self.loop = loop
-        self.socket = socket._sock
+    def __init__(self, object io, object socket, Connection connection):
+        self.io = io
+        self.socket = socket
         self.static_read_view = PyMemoryView_FromObject(
                             PyByteArray_FromStringAndSize(NULL, BUFFER_SIZE))
         self.read_view = None
@@ -46,7 +47,7 @@ cdef class SocketSource(object):
 
     @cython.locals(fileno=cython.int)
     cdef inline void setup_events(self):
-        io = self.loop.io
+        io = self.io
         fileno = self.socket.fileno()
 
         self.read_watcher = io(fileno, 1, priority=MINPRI)
@@ -162,9 +163,11 @@ cdef class SocketSource(object):
         self.stop_listen_read()
         self.stop_listen_write()
         self.socket.close()
+        self.connection.close()
+        self.connection = None
 
     @cython.locals(message_length=cython.int)
-    cdef void ready(self, bool all_ok, bytes message) except *:
+    cdef void ready(self, bool all_ok, object message) except *:
         """The ready can switch Connection to three states:
 
             WAIT_LEN if request was oneway.

@@ -6,13 +6,16 @@ import zmq
 
 ext_modules = [Extension("socket_zmq.source",
                          ["socket_zmq/source.pyx"],
-                         language="c++", include_dirs=zmq.get_includes()),
+                         include_dirs=zmq.get_includes()),
                Extension("socket_zmq.sink",
                          ["socket_zmq/sink.pyx"],
-                         language="c++", include_dirs=zmq.get_includes()),
+                         include_dirs=zmq.get_includes()),
                Extension("socket_zmq.connection",
                          ["socket_zmq/connection.pyx"],
-                         language="c++", include_dirs=zmq.get_includes())]
+                         include_dirs=zmq.get_includes()),
+               Extension("socket_zmq.server",
+                         ["socket_zmq/server.pyx"],
+                         include_dirs=zmq.get_includes())]
 
 
 setup(

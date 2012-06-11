@@ -27,7 +27,7 @@ cdef class SocketSource:
 
     cdef object socket
     cdef Connection connection
-    cdef object loop
+    cdef object io
 
     cdef object write_view
     cdef object read_view
@@ -52,6 +52,6 @@ cdef class SocketSource:
     cdef inline void write(self) except *
     cdef close(self)
 
-    cdef void ready(self, bool all_ok, bytes message) except *
+    cdef void ready(self, bool all_ok, object message) except *
     cpdef on_readable(self)
     cpdef on_writable(self)

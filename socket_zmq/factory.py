@@ -1,35 +1,37 @@
 from gevent.greenlet import Greenlet
-from gevent.pool import Pool
-from gevent.server import StreamServer
-from socket_zmq.connection import Connection
-from gevent_zeromq import zmq
+from gevent.socket import socket
+import zmq
+from socket_zmq.server import StreamServer
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
 from thrift.transport import TTransport
 from zmq.devices import ThreadDevice
 import logging
 import multiprocessing
+import _socket
 
 
-class Server(StreamServer):
+class Server(object):
 
-    def __init__(self, listener, context, frontend, **kwargs):
-        self.context = context
-        self.frontend = frontend
-        self.pool = Pool(size=1024)
-        super(Server, self).__init__(listener=listener, spawn=self.pool,
-                                     **kwargs)
+    def __init__(self, address, context, frontend):
+        self.socket = self.get_listener(address)
+        self.server = StreamServer(context, frontend, self.socket)
 
-    def create_socket(self):
-        client_socket = self.context.socket(zmq.REQ)
-        client_socket.connect(self.frontend)
-        return client_socket
+    def get_listener(self, address, backlog=50, family=_socket.AF_INET):
+        """A shortcut to create a TCP socket, bind it and put it into listening state."""
+        sock = socket(family=family)
+        sock.bind(address)
+        sock.listen(backlog)
+        sock.setblocking(0)
+        return sock
 
-    def handle(self, socket, address):
-        zmq_socket = self.create_socket()
-        connection = Connection(socket, zmq_socket)
+    def serve_forever(self):
+        self.server.serve_forever()
+
+    def stop(self):
+        self.server.stop()
 
 
-class Worker(Greenlet):
+class Worker(object):
 
     def __init__(self, context, backend, processor):
         self.context = context
@@ -37,7 +39,6 @@ class Worker(Greenlet):
         self.in_protocol = TBinaryProtocolFactory()
         self.out_protocol = self.in_protocol
         self.processor = processor
-        Greenlet.__init__(self)
 
     def create_socket(self):
         worker_socket = self.context.socket(zmq.REP)
@@ -58,7 +59,7 @@ class Worker(Greenlet):
         else:
             socket.send(otransport.getvalue())
 
-    def _run(self):
+    def run(self):
         socket = self.create_socket()
         try:
             while True:

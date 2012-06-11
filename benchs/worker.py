@@ -14,8 +14,7 @@ class BrokerHandler:
 def main():
     processor = TBroker.Processor(BrokerHandler())
     worker = factory.Worker(processor)
-    worker.start()
-    worker.join()
+    worker.run()
 
 
 if __name__ == '__main__':

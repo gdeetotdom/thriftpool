@@ -1,24 +1,38 @@
+# cython: profile=True
 cimport cython
 from cpython cimport bool
 from gevent.core import MAXPRI, MINPRI
-from zmq import TYPE, REQ, NOBLOCK, EAGAIN, FD, ZMQError
+from zmq.core.constants import TYPE, REQ, FD
+from zmq.core.error import ZMQError
 from socket_zmq.connection cimport Connection
+from zmq.core.libzmq cimport *
+
+
+cdef int NOBLOCK
+cdef int EAGAIN = ZMQ_EAGAIN
+if ZMQ_VERSION < 30000:
+    # backport DONTWAIT as alias to NOBLOCK
+    NOBLOCK = ZMQ_NOBLOCK
+else:
+    # keep NOBLOCK as alias for new DONTWAIT
+    NOBLOCK = ZMQ_DONTWAIT
 
 
 cdef class ZMQSink(object):
 
-    def __init__(self, object loop, object socket, Connection connection):
+    def __init__(self, object io, object socket, Connection connection):
         assert socket.getsockopt(TYPE) == REQ
-        self.loop = loop
+        self.io = io
         self.socket = socket
         self.connection = connection
         self.request = None
         self.status = WAIT_MESSAGE
         self.setup_events()
+        self.start_listen_read()
 
     @cython.locals(fileno=cython.int)
     cdef inline void setup_events(self):
-        io = self.loop.io
+        io = self.io
         fileno = self.socket.getsockopt(FD)
 
         self.read_watcher = io(fileno, 1, priority=MINPRI)
@@ -60,7 +74,6 @@ cdef class ZMQSink(object):
     cdef inline bint is_closed(self):
         return self.status == CLOSED
 
-    @cython.locals(response=cython.bytes)
     cdef void read(self) except *:
         assert self.is_readable()
         response = self.socket.recv(NOBLOCK)
@@ -78,6 +91,7 @@ cdef class ZMQSink(object):
         self.stop_listen_read()
         self.stop_listen_write()
         self.socket.close()
+        self.connection = None
 
     cdef inline void ready(self, object request) except *:
         assert self.is_ready()
@@ -90,21 +104,19 @@ cdef class ZMQSink(object):
             while self.is_readable():
                 self.read()
         except ZMQError, e:
-            if e.errno != EAGAIN:
+            if <int>e.errno != EAGAIN:
                 self.close()
                 raise
         except:
             self.close()
             raise
-        else:
-            self.stop_listen_read()
 
     cpdef on_writable(self):
         try:
             while self.is_writeable():
                 self.write()
         except ZMQError, e:
-            if e.errno != EAGAIN:
+            if <int>e.errno != EAGAIN:
                 self.close()
                 raise
         except:
@@ -113,4 +125,3 @@ cdef class ZMQSink(object):
         else:
             self.stop_listen_write()
             self.on_readable()
-            self.start_listen_read()

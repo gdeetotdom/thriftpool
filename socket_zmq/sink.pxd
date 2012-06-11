@@ -1,3 +1,4 @@
+# cython: profile=True
 from zmq.core.socket cimport Socket
 from socket_zmq.connection cimport Connection
 
@@ -15,7 +16,7 @@ cdef class ZMQSink:
     cdef Connection connection
     cdef object request
     cdef States status
-    cdef object loop
+    cdef object io
 
     cdef object read_watcher
     cdef object write_watcher
