@@ -54,6 +54,7 @@ cdef class StreamServer(object):
                 return
             raise
         client_socket.setblocking(0)
+        client_socket.setsockopt(_socket.SOL_TCP, _socket.TCP_NODELAY, 1)
         self.handle(client_socket, address)
 
     cpdef on_close(self, Socket socket):
