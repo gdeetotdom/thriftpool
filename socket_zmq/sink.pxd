@@ -21,7 +21,7 @@ cdef class ZMQSink:
     cdef object read_watcher
     cdef object write_watcher
 
-    cdef inline void setup_events(self)
+    cdef inline void setup_events(self) except *
     cdef inline void start_listen_read(self)
     cdef inline void stop_listen_read(self)
     cdef inline void start_listen_write(self)

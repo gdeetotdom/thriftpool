@@ -6,26 +6,45 @@ from gevent.socket import EWOULDBLOCK
 from gevent.core import MAXPRI, MINPRI
 from socket_zmq.connection cimport Connection
 from zmq.core.socket cimport Socket
+from collections import deque
 import zmq
 import _socket
+
+
+cdef class SocketPool(object):
+
+    def __init__(self, object context, object frontend, object size=128):
+        self.pool = deque(maxlen=size)
+        self.context = context
+        self.frontend = frontend
+
+    @cython.locals(front_socket=Socket)
+    cdef inline Socket create(self):
+        front_socket = self.context.socket(zmq.REQ)
+        front_socket.connect(self.frontend)
+        return front_socket
+
+    @cython.locals(sock=Socket)
+    cdef inline Socket get(self):
+        try:
+            sock = self.pool.popleft()
+        except IndexError:
+            sock = self.create()
+        return sock
+
+    cdef inline void put(self, Socket sock) except *:
+        self.pool.append(sock)
 
 
 cdef class StreamServer(object):
 
     def __init__(self, object context, object frontend, object socket):
         self.io = get_hub().loop.io
+        self.pool = SocketPool(context, frontend)
         self.socket = socket._sock
-        self.context = context
-        self.frontend = frontend
         self.stop_wait = Event()
         self.watcher = self.io(self.socket.fileno(), 1, priority=MINPRI)
         self.watcher.start(self.on_connection)
-
-    @cython.locals(front_socket=Socket)
-    cdef inline Socket create_backend(self):
-        front_socket = self.context.socket(zmq.REQ)
-        front_socket.connect(self.frontend)
-        return front_socket
 
     cpdef on_connection(self):
         try:
@@ -37,10 +56,13 @@ cdef class StreamServer(object):
         client_socket.setblocking(0)
         self.handle(client_socket, address)
 
+    cpdef on_close(self, Socket socket):
+        if not socket.closed:
+            self.pool.put(socket)
+
     @cython.locals(front_socket=Socket)
-    cpdef handle(self, object socket, object address):
-        front_socket = self.create_backend()
-        connection = Connection(self.io, socket, front_socket)
+    cdef inline handle(self, object socket, object address):
+        Connection(self.on_close, self.io, socket, self.pool.get())
 
     cpdef serve_forever(self):
         self.stop_wait.wait()

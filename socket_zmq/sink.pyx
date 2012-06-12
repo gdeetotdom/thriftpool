@@ -2,7 +2,7 @@
 cimport cython
 from cpython cimport bool
 from gevent.core import MAXPRI, MINPRI
-from zmq.core.constants import TYPE, REQ, FD
+from zmq.core.constants import FD
 from zmq.core.error import ZMQError
 from socket_zmq.connection cimport Connection
 from zmq.core.libzmq cimport *
@@ -21,7 +21,6 @@ else:
 cdef class ZMQSink(object):
 
     def __init__(self, object io, object socket, Connection connection):
-        assert socket.getsockopt(TYPE) == REQ
         self.io = io
         self.socket = socket
         self.connection = connection
@@ -31,29 +30,25 @@ cdef class ZMQSink(object):
         self.start_listen_read()
 
     @cython.locals(fileno=cython.int)
-    cdef inline void setup_events(self):
+    cdef inline void setup_events(self) except *:
         io = self.io
         fileno = self.socket.getsockopt(FD)
 
-        self.read_watcher = io(fileno, 1, priority=MINPRI)
+        self.read_watcher = io(fileno, 1, priority=MAXPRI)
         self.write_watcher = io(fileno, 2, priority=MAXPRI)
 
-    @cython.profile(False)
     cdef inline void start_listen_read(self):
         """Start listen read events."""
         self.read_watcher.start(self.on_readable)
 
-    @cython.profile(False)
     cdef inline void stop_listen_read(self):
         """Stop listen read events."""
         self.read_watcher.stop()
 
-    @cython.profile(False)
     cdef inline void start_listen_write(self):
         """Start listen write events."""
         self.write_watcher.start(self.on_writable)
 
-    @cython.profile(False)
     cdef inline void stop_listen_write(self):
         """Stop listen write events."""
         self.write_watcher.stop()
@@ -85,12 +80,15 @@ cdef class ZMQSink(object):
         self.socket.send(self.request, NOBLOCK)
         self.status = READ_REPLY
 
+    @cython.locals(ready=cython.bint)
     cdef close(self):
         assert not self.is_closed()
+        ready = self.is_ready()
         self.status == CLOSED
         self.stop_listen_read()
         self.stop_listen_write()
-        self.socket.close()
+        if not ready:
+            self.socket.close()
         self.connection = None
 
     cdef inline void ready(self, object request) except *:

@@ -7,7 +7,9 @@ from socket_zmq.sink cimport ZMQSink
 
 cdef class Connection(object):
 
-    def __init__(self, io, source_socket, endpoint_socket):
+    def __init__(self, object on_close, object io, object source_socket, object endpoint_socket):
+        self.on_close = on_close
+        self.socket = endpoint_socket
         self.source = SocketSource(io, source_socket, self)
         self.sink = ZMQSink(io, endpoint_socket, self)
 
@@ -22,3 +24,4 @@ cdef class Connection(object):
             self.source.close()
         if not self.sink.is_closed():
             self.sink.close()
+        self.on_close(self.socket)

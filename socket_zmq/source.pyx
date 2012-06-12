@@ -46,29 +46,25 @@ cdef class SocketSource(object):
         self.start_listen_read()
 
     @cython.locals(fileno=cython.int)
-    cdef inline void setup_events(self):
+    cdef inline void setup_events(self) except *:
         io = self.io
         fileno = self.socket.fileno()
 
         self.read_watcher = io(fileno, 1, priority=MINPRI)
         self.write_watcher = io(fileno, 2, priority=MAXPRI)
 
-    @cython.profile(False)
     cdef inline void start_listen_read(self):
         """Start listen read events."""
         self.read_watcher.start(self.on_readable)
 
-    @cython.profile(False)
     cdef inline void stop_listen_read(self):
         """Stop listen read events."""
         self.read_watcher.stop()
 
-    @cython.profile(False)
     cdef inline void start_listen_write(self):
         """Start listen write events."""
         self.write_watcher.start(self.on_writable)
 
-    @cython.profile(False)
     cdef inline void stop_listen_write(self):
         self.write_watcher.stop()
 
