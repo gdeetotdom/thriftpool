@@ -16,15 +16,15 @@ cdef class StreamServer:
 
     cdef SocketPool pool
 
+    cdef object hub
     cdef object io
     cdef object socket
     cdef object watcher
-    cdef object stop_wait
 
     cpdef on_connection(self)
     cpdef on_close(self, Socket socket)
 
-    cdef inline handle(self, object socket, object address)
+    cdef inline handle(self, object socket)
 
-    cpdef serve_forever(self)
+    cpdef run(self)
     cpdef stop(self)

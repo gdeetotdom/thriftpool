@@ -5,9 +5,6 @@ from gevent.greenlet import Greenlet
 
 
 def main():
-    device = factory.Device()
-    device.start()
-
     server = factory.Server(('localhost', 9090))
     Greenlet(server.stop).start_later(60)
     server.serve_forever()
@@ -15,6 +12,10 @@ def main():
 
 if __name__ == '__main__':
     setproctitle('[server]')
+
+    device = factory.Device()
+    device.start()
+
     #yep.start('server.prof')
     main()
     #yep.stop()

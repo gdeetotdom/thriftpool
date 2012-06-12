@@ -37,13 +37,17 @@ cdef class SocketSource(object):
     def __init__(self, object io, object socket, Connection connection):
         self.io = io
         self.socket = socket
-        self.static_read_view = PyMemoryView_FromObject(
-                            PyByteArray_FromStringAndSize(NULL, BUFFER_SIZE))
+        self.first_read_view = self.allocate_buffer(BUFFER_SIZE)
         self.read_view = None
         self.write_view = None
         self.connection = connection
         self.setup_events()
         self.start_listen_read()
+
+    cdef inline object allocate_buffer(self, Py_ssize_t size):
+        buf = PyMemoryView_FromObject(
+                            PyByteArray_FromStringAndSize(NULL, size))
+        return buf
 
     @cython.locals(fileno=cython.int)
     cdef inline void setup_events(self) except *:
@@ -89,8 +93,8 @@ cdef class SocketSource(object):
     @cython.locals(received=cython.int, message_length=cython.int)
     cdef inline int read_length(self) except *:
         """Reads length of request."""
-        static_read_view = self.static_read_view
-        received = self.socket.recv_into(static_read_view, BUFFER_SIZE)
+        first_read_view = self.first_read_view
+        received = self.socket.recv_into(first_read_view, BUFFER_SIZE)
 
         if received == 0:
             # if we read 0 bytes and message is empty, it means client
@@ -101,19 +105,21 @@ cdef class SocketSource(object):
         assert received >= LENGTH_SIZE, "message length can't be read"
 
         message_length = unpack_from(LENGTH_FORMAT,
-                            static_read_view[0:LENGTH_SIZE].tobytes())[0]
+                            first_read_view[0:LENGTH_SIZE].tobytes())[0]
         assert message_length > 0, "negative or empty frame size, it seems" \
                                    " client doesn't use FramedTransport"
-        self.len = message_length
+        self.len = message_length + LENGTH_SIZE
 
-        read_view = PyMemoryView_FromObject(
-                        PyByteArray_FromStringAndSize(NULL, message_length))
-        read_view[0:] = static_read_view[LENGTH_SIZE:received]
-        self.read_view = read_view
+        if self.len == received:
+            self.read_view = first_read_view
+        else:
+            read_view = self.allocate_buffer(self.len)
+            read_view[0:] = first_read_view[:received]
+            self.read_view = read_view
 
         self.status = WAIT_MESSAGE
 
-        return received - LENGTH_SIZE
+        return received
 
     @cython.locals(readed=cython.int)
     cdef inline void read(self) except *:
@@ -183,12 +189,8 @@ cdef class SocketSource(object):
             self.message = None
             self.status = WAIT_LEN
         else:
-            self.write_view = \
-                PyMemoryView_FromObject(
-                    PyByteArray_FromStringAndSize(NULL,
-                        message_length + LENGTH_SIZE))
-            self.write_view[0:LENGTH_SIZE] = pack(LENGTH_FORMAT,
-                                                  message_length)
+            self.write_view = self.allocate_buffer(message_length + LENGTH_SIZE)
+            self.write_view[0:LENGTH_SIZE] = pack(LENGTH_FORMAT, message_length)
             self.write_view[LENGTH_SIZE:] = message
             message_length += LENGTH_SIZE
             self.status = SEND_ANSWER
@@ -197,22 +199,19 @@ cdef class SocketSource(object):
         self.len = message_length
 
     cpdef on_readable(self):
-        assert self.is_readable()
         try:
             while self.is_readable():
                 self.read()
             if self.is_ready():
-                self.connection.on_request(self.read_view)
+                self.connection.on_request(self.read_view[LENGTH_SIZE:])
         except error, e:
             if e.errno != EAGAIN:
                 self.close()
-                raise
         except:
             self.close()
             raise
 
     cpdef on_writable(self):
-        assert self.is_writeable()
         try:
             while self.is_writeable():
                 self.write()
@@ -221,7 +220,6 @@ cdef class SocketSource(object):
         except error, e:
             if e.errno != EAGAIN:
                 self.close()
-                raise
         except:
             self.close()
             raise

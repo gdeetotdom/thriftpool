@@ -31,10 +31,12 @@ cdef class SocketSource:
 
     cdef object write_view
     cdef object read_view
-    cdef object static_read_view
+    cdef object first_read_view
 
     cdef object read_watcher
     cdef object write_watcher
+
+    cdef inline object allocate_buffer(self, Py_ssize_t size)
 
     cdef inline void setup_events(self) except *
     cdef inline void start_listen_read(self)

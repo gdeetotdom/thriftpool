@@ -1,8 +1,7 @@
 # cython: profile=True
 import cython
-from gevent.hub import get_hub
-from gevent.event import Event
-from gevent.socket import EWOULDBLOCK
+from errno import EWOULDBLOCK
+from gevent.hub import Hub
 from gevent.core import MAXPRI, MINPRI
 from socket_zmq.connection cimport Connection
 from zmq.core.socket cimport Socket
@@ -39,35 +38,36 @@ cdef class SocketPool(object):
 cdef class StreamServer(object):
 
     def __init__(self, object context, object frontend, object socket):
-        self.io = get_hub().loop.io
+        self.hub = Hub()
+        self.io = self.hub.loop.io
         self.pool = SocketPool(context, frontend)
         self.socket = socket._sock
-        self.stop_wait = Event()
         self.watcher = self.io(self.socket.fileno(), 1, priority=MINPRI)
         self.watcher.start(self.on_connection)
 
     cpdef on_connection(self):
         try:
-            client_socket, address = self.socket.accept()
+            result = self.socket.accept()
         except _socket.error, err:
             if err[0] == EWOULDBLOCK:
                 return
             raise
+        client_socket = result[0]
         client_socket.setblocking(0)
         client_socket.setsockopt(_socket.SOL_TCP, _socket.TCP_NODELAY, 1)
-        self.handle(client_socket, address)
+        self.handle(client_socket)
 
     cpdef on_close(self, Socket socket):
         if not socket.closed:
             self.pool.put(socket)
 
     @cython.locals(front_socket=Socket)
-    cdef inline handle(self, object socket, object address):
+    cdef inline handle(self, object socket):
         Connection(self.on_close, self.io, socket, self.pool.get())
 
-    cpdef serve_forever(self):
-        self.stop_wait.wait()
+    cpdef run(self):
+        self.hub.join()
 
     cpdef stop(self):
         self.watcher.stop()
-        self.stop_wait.set()
+        self.hub.destroy()

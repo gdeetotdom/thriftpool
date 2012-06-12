@@ -104,7 +104,6 @@ cdef class ZMQSink(object):
         except ZMQError, e:
             if <int>e.errno != EAGAIN:
                 self.close()
-                raise
         except:
             self.close()
             raise
@@ -116,7 +115,6 @@ cdef class ZMQSink(object):
         except ZMQError, e:
             if <int>e.errno != EAGAIN:
                 self.close()
-                raise
         except:
             self.close()
             raise

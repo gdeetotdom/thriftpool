@@ -25,7 +25,7 @@ class Server(object):
         return sock
 
     def serve_forever(self):
-        self.server.serve_forever()
+        self.server.run()
 
     def stop(self):
         self.server.stop()
