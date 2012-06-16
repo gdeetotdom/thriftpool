@@ -1,13 +1,13 @@
 # cython: profile=True
 import cython
 from errno import EWOULDBLOCK
-from gevent.hub import Hub
-from gevent.core import MAXPRI, MINPRI
 from socket_zmq.connection cimport Connection
 from zmq.core.socket cimport Socket
 from collections import deque
 import zmq
 import _socket
+import pyev
+import weakref
 
 
 cdef class SocketPool(object):
@@ -38,14 +38,15 @@ cdef class SocketPool(object):
 cdef class StreamServer(object):
 
     def __init__(self, object context, object frontend, object socket):
-        self.hub = Hub()
-        self.io = self.hub.loop.io
+        self.loop = pyev.Loop()
         self.pool = SocketPool(context, frontend)
         self.socket = socket._sock
-        self.watcher = self.io(self.socket.fileno(), 1, priority=MINPRI)
-        self.watcher.start(self.on_connection)
+        self.watcher = pyev.Io(self.socket, pyev.EV_READ,
+                               self.loop, self.on_connection,
+                               priority=pyev.EV_MINPRI)
+        self.watcher.start()
 
-    cpdef on_connection(self):
+    cpdef on_connection(self, object watcher, object revents):
         try:
             result = self.socket.accept()
         except _socket.error, err:
@@ -63,11 +64,12 @@ cdef class StreamServer(object):
 
     @cython.locals(front_socket=Socket)
     cdef inline handle(self, object socket):
-        Connection(self.on_close, self.io, socket, self.pool.get())
+        Connection(self.on_close, self.loop, socket, self.pool.get())
 
-    cpdef run(self):
-        self.hub.join()
+    cpdef start(self):
+        self.loop.start()
 
     cpdef stop(self):
+        self.loop.stop(pyev.EVBREAK_ALL)
         self.watcher.stop()
-        self.hub.destroy()
+        self.watcher = None

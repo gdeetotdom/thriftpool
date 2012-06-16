@@ -1,5 +1,4 @@
-from gevent.greenlet import Greenlet
-from gevent.socket import socket
+import socket
 import zmq
 from socket_zmq.server import StreamServer
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
@@ -18,14 +17,14 @@ class Server(object):
 
     def get_listener(self, address, backlog=50, family=_socket.AF_INET):
         """A shortcut to create a TCP socket, bind it and put it into listening state."""
-        sock = socket(family=family)
+        sock = socket.socket(family=family)
         sock.bind(address)
         sock.listen(backlog)
         sock.setblocking(0)
         return sock
 
     def serve_forever(self):
-        self.server.run()
+        self.server.start()
 
     def stop(self):
         self.server.stop()
@@ -70,10 +69,10 @@ class Worker(object):
 
 class Factory(object):
 
-    def __init__(self, backend):
+    def __init__(self, frontend, backend):
         self.context = zmq.Context(multiprocessing.cpu_count())
 
-        self.frontend = "inproc://frontend_%s" % id(self)
+        self.frontend = frontend
         self.backend = backend
 
         super(Factory, self).__init__()

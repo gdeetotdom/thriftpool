@@ -7,11 +7,12 @@ from socket_zmq.sink cimport ZMQSink
 
 cdef class Connection(object):
 
-    def __init__(self, object on_close, object io, object source_socket, object endpoint_socket):
+    def __init__(self, object on_close, object loop, object source_socket,
+                                                    object endpoint_socket):
         self.on_close = on_close
         self.socket = endpoint_socket
-        self.source = SocketSource(io, source_socket, self)
-        self.sink = ZMQSink(io, endpoint_socket, self)
+        self.source = SocketSource(loop, source_socket, self)
+        self.sink = ZMQSink(loop, endpoint_socket, self)
 
     cdef on_request(self, object message):
         self.sink.ready(message)

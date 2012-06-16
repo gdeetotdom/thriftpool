@@ -7,6 +7,7 @@ from gevent.socket import EAGAIN, error
 from struct import unpack_from, pack, calcsize
 from zmq.core.message cimport Frame
 from socket_zmq.connection cimport Connection
+import pyev
 
 
 cdef object LENGTH_FORMAT = '!i'
@@ -34,14 +35,18 @@ cdef class SocketSource(object):
         self.sent_bytes = 0
         self.status = WAIT_LEN
 
-    def __init__(self, object io, object socket, Connection connection):
-        self.io = io
+    def __init__(self, object loop, object socket, Connection connection):
         self.socket = socket
         self.first_read_view = self.allocate_buffer(BUFFER_SIZE)
         self.read_view = None
         self.write_view = None
         self.connection = connection
-        self.setup_events()
+        self.read_watcher = pyev.Io(self.socket, pyev.EV_READ,
+                                    loop, self.on_readable,
+                                    priority=pyev.EV_MINPRI)
+        self.write_watcher = pyev.Io(self.socket, pyev.EV_WRITE,
+                                     loop, self.on_writable,
+                                     priority=pyev.EV_MAXPRI)
         self.start_listen_read()
 
     cdef inline object allocate_buffer(self, Py_ssize_t size):
@@ -49,17 +54,9 @@ cdef class SocketSource(object):
                             PyByteArray_FromStringAndSize(NULL, size))
         return buf
 
-    @cython.locals(fileno=cython.int)
-    cdef inline void setup_events(self) except *:
-        io = self.io
-        fileno = self.socket.fileno()
-
-        self.read_watcher = io(fileno, 1, priority=MINPRI)
-        self.write_watcher = io(fileno, 2, priority=MAXPRI)
-
     cdef inline void start_listen_read(self):
         """Start listen read events."""
-        self.read_watcher.start(self.on_readable)
+        self.read_watcher.start()
 
     cdef inline void stop_listen_read(self):
         """Stop listen read events."""
@@ -67,7 +64,7 @@ cdef class SocketSource(object):
 
     cdef inline void start_listen_write(self):
         """Start listen write events."""
-        self.write_watcher.start(self.on_writable)
+        self.write_watcher.start()
 
     cdef inline void stop_listen_write(self):
         self.write_watcher.stop()
@@ -163,7 +160,9 @@ cdef class SocketSource(object):
         assert not self.is_closed()
         self.status = CLOSED
         self.stop_listen_read()
+        self.read_watcher = None
         self.stop_listen_write()
+        self.write_watcher = None
         self.socket.close()
         self.connection.close()
         self.connection = None
@@ -198,7 +197,7 @@ cdef class SocketSource(object):
 
         self.len = message_length
 
-    cpdef on_readable(self):
+    cpdef on_readable(self, object watcher, object revents):
         try:
             while self.is_readable():
                 self.read()
@@ -211,7 +210,7 @@ cdef class SocketSource(object):
             self.close()
             raise
 
-    cpdef on_writable(self):
+    cpdef on_writable(self, object watcher, object revents):
         try:
             while self.is_writeable():
                 self.write()

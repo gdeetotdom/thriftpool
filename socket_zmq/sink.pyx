@@ -6,6 +6,7 @@ from zmq.core.constants import FD
 from zmq.core.error import ZMQError
 from socket_zmq.connection cimport Connection
 from zmq.core.libzmq cimport *
+import pyev
 
 
 cdef int NOBLOCK
@@ -20,26 +21,22 @@ else:
 
 cdef class ZMQSink(object):
 
-    def __init__(self, object io, object socket, Connection connection):
-        self.io = io
+    def __init__(self, object loop, object socket, Connection connection):
         self.socket = socket
         self.connection = connection
         self.request = None
         self.status = WAIT_MESSAGE
-        self.setup_events()
+        self.read_watcher = pyev.Io(self.socket.getsockopt(FD), pyev.EV_READ,
+                                    loop, self.on_readable,
+                                    priority=pyev.EV_MAXPRI)
+        self.write_watcher = pyev.Io(self.socket.getsockopt(FD), pyev.EV_WRITE,
+                                     loop, self.on_writable,
+                                     priority=pyev.EV_MAXPRI)
         self.start_listen_read()
-
-    @cython.locals(fileno=cython.int)
-    cdef inline void setup_events(self) except *:
-        io = self.io
-        fileno = self.socket.getsockopt(FD)
-
-        self.read_watcher = io(fileno, 1, priority=MAXPRI)
-        self.write_watcher = io(fileno, 2, priority=MAXPRI)
 
     cdef inline void start_listen_read(self):
         """Start listen read events."""
-        self.read_watcher.start(self.on_readable)
+        self.read_watcher.start()
 
     cdef inline void stop_listen_read(self):
         """Stop listen read events."""
@@ -47,7 +44,7 @@ cdef class ZMQSink(object):
 
     cdef inline void start_listen_write(self):
         """Start listen write events."""
-        self.write_watcher.start(self.on_writable)
+        self.write_watcher.start()
 
     cdef inline void stop_listen_write(self):
         """Stop listen write events."""
@@ -86,7 +83,9 @@ cdef class ZMQSink(object):
         ready = self.is_ready()
         self.status == CLOSED
         self.stop_listen_read()
+        self.read_watcher = None
         self.stop_listen_write()
+        self.write_watcher = None
         if not ready:
             self.socket.close()
         self.connection = None
@@ -97,7 +96,7 @@ cdef class ZMQSink(object):
         self.request = request
         self.start_listen_write()
 
-    cpdef on_readable(self):
+    cpdef on_readable(self, object watcher, object revents):
         try:
             while self.is_readable():
                 self.read()
@@ -108,7 +107,7 @@ cdef class ZMQSink(object):
             self.close()
             raise
 
-    cpdef on_writable(self):
+    cpdef on_writable(self, object watcher, object revents):
         try:
             while self.is_writeable():
                 self.write()
@@ -120,4 +119,4 @@ cdef class ZMQSink(object):
             raise
         else:
             self.stop_listen_write()
-            self.on_readable()
+            self.on_readable(watcher, revents)

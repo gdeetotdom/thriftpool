@@ -14,7 +14,7 @@ else:
 host = "localhost"
 port = 9090
 
-delta = 10
+delta = 5
 
 
 # Init thrift connection and protocol handlers

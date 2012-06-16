@@ -27,7 +27,6 @@ cdef class SocketSource:
 
     cdef object socket
     cdef Connection connection
-    cdef object io
 
     cdef object write_view
     cdef object read_view
@@ -38,7 +37,6 @@ cdef class SocketSource:
 
     cdef inline object allocate_buffer(self, Py_ssize_t size)
 
-    cdef inline void setup_events(self) except *
     cdef inline void start_listen_read(self)
     cdef inline void stop_listen_read(self)
     cdef inline void start_listen_write(self)
@@ -55,5 +53,5 @@ cdef class SocketSource:
     cdef close(self)
 
     cdef void ready(self, bool all_ok, object message) except *
-    cpdef on_readable(self)
-    cpdef on_writable(self)
+    cpdef on_readable(self, object watcher, object revents)
+    cpdef on_writable(self, object watcher, object revents)
