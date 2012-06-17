@@ -6,6 +6,4 @@ from socket_zmq import factory
 
 
 backend = "ipc://backend"
-frontend = "ipc://frontend"
-factory = factory.Factory(frontend, backend)
-
+factory = factory.Factory(backend)

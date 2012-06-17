@@ -21,9 +21,9 @@ else:
 
 cdef class ZMQSink(object):
 
-    def __init__(self, object loop, object socket, Connection connection):
+    def __init__(self, object loop, object socket):
         self.socket = socket
-        self.connection = connection
+        self.on_response = None
         self.request = None
         self.status = WAIT_MESSAGE
         self.read_watcher = pyev.Io(self.socket.getsockopt(FD), pyev.EV_READ,
@@ -67,9 +67,9 @@ cdef class ZMQSink(object):
         return self.status == CLOSED
 
     cdef void read(self) except *:
-        assert self.is_readable()
+        assert self.is_readable() and self.on_response is not None
         response = self.socket.recv(NOBLOCK)
-        self.connection.on_response(response)
+        self.on_response(response)
         self.status = WAIT_MESSAGE
 
     cdef inline void write(self) except *:
@@ -80,14 +80,12 @@ cdef class ZMQSink(object):
     @cython.locals(ready=cython.bint)
     cdef close(self):
         assert not self.is_closed()
-        ready = self.is_ready()
         self.status == CLOSED
         self.stop_listen_read()
         self.read_watcher = None
         self.stop_listen_write()
         self.write_watcher = None
-        if not ready:
-            self.socket.close()
+        self.socket.close()
         self.connection = None
 
     cdef inline void ready(self, object request) except *:

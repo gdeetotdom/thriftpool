@@ -2,6 +2,7 @@
 import cython
 from errno import EWOULDBLOCK
 from socket_zmq.connection cimport Connection
+from socket_zmq.sink cimport ZMQSink
 from zmq.core.socket cimport Socket
 from collections import deque
 import zmq
@@ -10,36 +11,39 @@ import pyev
 import weakref
 
 
-cdef class SocketPool(object):
+cdef class SinkPool(object):
 
-    def __init__(self, object context, object frontend, object size=128):
+    def __init__(self, object loop, object context, object frontend,
+                 object size=128):
+        self.loop = loop
         self.pool = deque(maxlen=size)
         self.context = context
         self.frontend = frontend
 
-    @cython.locals(front_socket=Socket)
-    cdef inline Socket create(self):
+    @cython.locals(front_socket=Socket, sink=ZMQSink)
+    cdef inline ZMQSink create(self):
         front_socket = self.context.socket(zmq.REQ)
         front_socket.connect(self.frontend)
-        return front_socket
+        sink = ZMQSink(self.loop, front_socket)
+        return sink
 
-    @cython.locals(sock=Socket)
-    cdef inline Socket get(self):
+    @cython.locals(sink=ZMQSink)
+    cdef inline ZMQSink get(self):
         try:
-            sock = self.pool.popleft()
+            sink = self.pool.popleft()
         except IndexError:
-            sock = self.create()
-        return sock
+            sink = self.create()
+        return sink
 
-    cdef inline void put(self, Socket sock) except *:
-        self.pool.append(sock)
+    cdef inline void put(self, ZMQSink sink) except *:
+        self.pool.append(sink)
 
 
 cdef class StreamServer(object):
 
     def __init__(self, object context, object frontend, object socket):
         self.loop = pyev.Loop()
-        self.pool = SocketPool(context, frontend)
+        self.pool = SinkPool(self.loop, context, frontend)
         self.socket = socket._sock
         self.watcher = pyev.Io(self.socket, pyev.EV_READ,
                                self.loop, self.on_connection,
@@ -58,11 +62,12 @@ cdef class StreamServer(object):
         client_socket.setsockopt(_socket.SOL_TCP, _socket.TCP_NODELAY, 1)
         self.handle(client_socket)
 
-    cpdef on_close(self, Socket socket):
-        if not socket.closed:
-            self.pool.put(socket)
+    cpdef on_close(self, ZMQSink sink):
+        if not sink.is_ready():
+            sink.close()
+            return
+        self.pool.put(sink)
 
-    @cython.locals(front_socket=Socket)
     cdef inline handle(self, object socket):
         Connection(self.on_close, self.loop, socket, self.pool.get())
 

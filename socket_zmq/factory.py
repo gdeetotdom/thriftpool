@@ -5,7 +5,6 @@ from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
 from thrift.transport import TTransport
 from zmq.devices import ThreadDevice
 import logging
-import multiprocessing
 import _socket
 
 
@@ -69,10 +68,10 @@ class Worker(object):
 
 class Factory(object):
 
-    def __init__(self, frontend, backend):
-        self.context = zmq.Context(multiprocessing.cpu_count())
+    def __init__(self, backend):
+        self.context = zmq.Context()
 
-        self.frontend = frontend
+        self.frontend = 'inproc://frontend'
         self.backend = backend
 
         super(Factory, self).__init__()

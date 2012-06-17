@@ -13,7 +13,7 @@ cdef enum States:
 cdef class ZMQSink:
 
     cdef Socket socket
-    cdef Connection connection
+    cdef object on_response
     cdef object request
     cdef States status
 

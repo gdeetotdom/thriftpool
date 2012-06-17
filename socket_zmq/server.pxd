@@ -1,27 +1,29 @@
-from zmq.core.socket cimport Socket
+from socket_zmq.sink cimport ZMQSink
 
 
-cdef class SocketPool(object):
+cdef class SinkPool(object):
 
+    cdef object loop
     cdef object pool
     cdef object context
     cdef object frontend
 
-    cdef inline Socket create(self)
-    cdef inline Socket get(self)
-    cdef inline void put(self, Socket sock) except *
+    cdef inline ZMQSink create(self)
+
+    cdef inline ZMQSink get(self)
+    cdef inline void put(self, ZMQSink sock) except *
 
 
 cdef class StreamServer:
 
-    cdef SocketPool pool
+    cdef SinkPool pool
 
     cdef object loop
     cdef object socket
     cdef object watcher
 
     cpdef on_connection(self, object watcher, object revents)
-    cpdef on_close(self, Socket socket)
+    cpdef on_close(self, ZMQSink sink)
 
     cdef inline handle(self, object socket)
 
