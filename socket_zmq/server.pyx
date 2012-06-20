@@ -3,7 +3,9 @@ import cython
 from errno import EWOULDBLOCK
 from socket_zmq.connection cimport Connection
 from socket_zmq.sink cimport ZMQSink
+from socket_zmq.device cimport Device
 from zmq.core.socket cimport Socket
+from zmq.core.context cimport Context
 from collections import deque
 import zmq
 import _socket
@@ -13,7 +15,7 @@ import weakref
 
 cdef class SinkPool(object):
 
-    def __init__(self, object loop, object context, object frontend,
+    def __init__(self, object loop, Context context, object frontend,
                  object size=128):
         self.loop = loop
         self.pool = deque(maxlen=size)
@@ -41,9 +43,11 @@ cdef class SinkPool(object):
 
 cdef class StreamServer(object):
 
-    def __init__(self, object context, object frontend, object socket):
+    def __init__(self, socket, context, frontend, backend):
         self.loop = pyev.Loop()
-        self.pool = SinkPool(self.loop, context, frontend)
+        self.context = context
+        self.device = Device(self.loop, self.context, frontend, backend)
+        self.pool = SinkPool(self.loop, self.context, frontend)
         self.socket = socket._sock
         self.watcher = pyev.Io(self.socket, pyev.EV_READ,
                                self.loop, self.on_connection,
@@ -65,16 +69,19 @@ cdef class StreamServer(object):
     cpdef on_close(self, ZMQSink sink):
         if not sink.is_ready():
             sink.close()
-            return
-        self.pool.put(sink)
+        else:
+            self.pool.put(sink)
 
     cdef inline handle(self, object socket):
         Connection(self.on_close, self.loop, socket, self.pool.get())
 
     cpdef start(self):
+        self.device.start()
         self.loop.start()
 
     cpdef stop(self):
         self.loop.stop(pyev.EVBREAK_ALL)
+        self.socket.close()
+        self.device.stop()
         self.watcher.stop()
         self.watcher = None

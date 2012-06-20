@@ -10,9 +10,9 @@ import _socket
 
 class Server(object):
 
-    def __init__(self, address, context, frontend):
+    def __init__(self, address, context, frontend, backend):
         self.socket = self.get_listener(address)
-        self.server = StreamServer(context, frontend, self.socket)
+        self.server = StreamServer(self.socket, context, frontend, backend)
 
     def get_listener(self, address, backlog=50, family=_socket.AF_INET):
         """A shortcut to create a TCP socket, bind it and put it into listening state."""
@@ -85,7 +85,7 @@ class Factory(object):
         return device
 
     def Server(self, listener):
-        server = Server(listener, self.context, self.frontend)
+        server = Server(listener, self.context, self.frontend, self.backend)
 
         return server
 

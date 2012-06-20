@@ -1,22 +1,11 @@
 # cython: profile=True
 cimport cython
 from cpython cimport bool
-from gevent.core import MAXPRI, MINPRI
-from zmq.core.constants import FD
 from zmq.core.error import ZMQError
 from socket_zmq.connection cimport Connection
 from zmq.core.libzmq cimport *
+from zmq.core.constants import NOBLOCK, EAGAIN, FD
 import pyev
-
-
-cdef int NOBLOCK
-cdef int EAGAIN = ZMQ_EAGAIN
-if ZMQ_VERSION < 30000:
-    # backport DONTWAIT as alias to NOBLOCK
-    NOBLOCK = ZMQ_NOBLOCK
-else:
-    # keep NOBLOCK as alias for new DONTWAIT
-    NOBLOCK = ZMQ_DONTWAIT
 
 
 cdef class ZMQSink(object):
@@ -86,7 +75,6 @@ cdef class ZMQSink(object):
         self.stop_listen_write()
         self.write_watcher = None
         self.socket.close()
-        self.connection = None
 
     cdef inline void ready(self, object request) except *:
         assert self.is_ready()
@@ -99,7 +87,7 @@ cdef class ZMQSink(object):
             while self.is_readable():
                 self.read()
         except ZMQError, e:
-            if <int>e.errno != EAGAIN:
+            if e.errno != EAGAIN:
                 self.close()
         except:
             self.close()
@@ -110,7 +98,7 @@ cdef class ZMQSink(object):
             while self.is_writeable():
                 self.write()
         except ZMQError, e:
-            if <int>e.errno != EAGAIN:
+            if e.errno != EAGAIN:
                 self.close()
         except:
             self.close()
