@@ -1,18 +1,20 @@
 # cython: profile=True
 cimport cython
 from cpython cimport bool
+from zmq.core.constants import NOBLOCK, EAGAIN, FD
 from zmq.core.error import ZMQError
+import pyev
 from socket_zmq.connection cimport Connection
 from zmq.core.libzmq cimport *
-from zmq.core.constants import NOBLOCK, EAGAIN, FD
-import pyev
+from zmq.core.socket cimport Socket
+from socket_zmq.connection cimport Connection
 
 
 cdef class ZMQSink(object):
 
-    def __init__(self, object loop, object socket):
+    def __init__(self, object loop, Socket socket):
         self.socket = socket
-        self.on_response = None
+        self.connection = None
         self.request = None
         self.status = WAIT_MESSAGE
         self.read_watcher = pyev.Io(self.socket.getsockopt(FD), pyev.EV_READ,
@@ -22,6 +24,12 @@ cdef class ZMQSink(object):
                                      loop, self.on_writable,
                                      priority=pyev.EV_MAXPRI)
         self.start_listen_read()
+
+    cdef bound(self, Connection connection):
+        self.connection = connection
+
+    cdef unbound(self):
+        self.connection = None
 
     cdef inline void start_listen_read(self):
         """Start listen read events."""
@@ -55,51 +63,53 @@ cdef class ZMQSink(object):
     cdef inline bint is_closed(self):
         return self.status == CLOSED
 
-    cdef void read(self) except *:
-        assert self.is_readable() and self.on_response is not None
+    cdef inline read(self):
+        assert self.is_readable(), 'sink not readable'
         response = self.socket.recv(NOBLOCK)
-        self.on_response(response)
+        self.connection.on_response(response)
         self.status = WAIT_MESSAGE
 
-    cdef inline void write(self) except *:
-        assert self.is_writeable()
+    cdef inline write(self):
+        assert self.is_writeable(), 'sink not writable'
         self.socket.send(self.request, NOBLOCK)
         self.status = READ_REPLY
 
     @cython.locals(ready=cython.bint)
-    cdef close(self):
-        assert not self.is_closed()
-        self.status == CLOSED
+    cpdef close(self):
+        assert not self.is_closed(), 'sink already closed'
+        self.status = CLOSED
         self.stop_listen_read()
-        self.read_watcher = None
         self.stop_listen_write()
-        self.write_watcher = None
         self.socket.close()
 
-    cdef inline void ready(self, object request) except *:
-        assert self.is_ready()
+    cdef inline ready(self, object request):
+        assert self.is_ready(), 'sink not ready'
         self.status = SEND_REQUEST
         self.request = request
         self.start_listen_write()
 
-    cpdef on_readable(self, object watcher, object revents):
+    def on_readable(self, object watcher, object revents):
         try:
             while self.is_readable():
                 self.read()
         except ZMQError, e:
-            if e.errno != EAGAIN:
-                self.close()
+            if e.errno == EAGAIN:
+                return
+            self.close()
+            raise
         except:
             self.close()
             raise
 
-    cpdef on_writable(self, object watcher, object revents):
+    def on_writable(self, object watcher, object revents):
         try:
             while self.is_writeable():
                 self.write()
         except ZMQError, e:
-            if e.errno != EAGAIN:
-                self.close()
+            if e.errno == EAGAIN:
+                return
+            self.close()
+            raise
         except:
             self.close()
             raise

@@ -15,9 +15,6 @@ def get_ext_modules():
                              include_dirs=zmq.get_includes()),
                    Extension("socket_zmq.server",
                              ["socket_zmq/server.pyx"],
-                             include_dirs=zmq.get_includes()),
-                   Extension("socket_zmq.device",
-                             ["socket_zmq/device.pyx"],
                              include_dirs=zmq.get_includes())]
     return ext_modules
 

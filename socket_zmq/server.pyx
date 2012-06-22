@@ -1,9 +1,8 @@
 # cython: profile=True
 import cython
-from errno import EWOULDBLOCK
+import errno
 from socket_zmq.connection cimport Connection
 from socket_zmq.sink cimport ZMQSink
-from socket_zmq.device cimport Device
 from zmq.core.socket cimport Socket
 from zmq.core.context cimport Context
 from collections import deque
@@ -11,14 +10,17 @@ import zmq
 import _socket
 import pyev
 import weakref
+import signal
+
+NONBLOCKING = (errno.EAGAIN, errno.EWOULDBLOCK)
+STOPSIGNALS = (signal.SIGINT, signal.SIGTERM)
 
 
 cdef class SinkPool(object):
 
-    def __init__(self, object loop, Context context, object frontend,
-                 object size=128):
+    def __init__(self, object loop, Context context, object frontend):
         self.loop = loop
-        self.pool = deque(maxlen=size)
+        self.pool = deque()
         self.context = context
         self.frontend = frontend
 
@@ -37,51 +39,64 @@ cdef class SinkPool(object):
             sink = self.create()
         return sink
 
-    cdef inline void put(self, ZMQSink sink) except *:
+    cdef inline put(self, ZMQSink sink):
         self.pool.append(sink)
+
+    cpdef close(self):
+        while self.pool:
+            self.pool.pop().close()
 
 
 cdef class StreamServer(object):
 
-    def __init__(self, socket, context, frontend, backend):
+    def __init__(self, object socket, object context, object frontend):
+        self.connections = set()
         self.loop = pyev.Loop()
         self.context = context
-        self.device = Device(self.loop, self.context, frontend, backend)
-        self.pool = SinkPool(self.loop, self.context, frontend)
         self.socket = socket._sock
-        self.watcher = pyev.Io(self.socket, pyev.EV_READ,
-                               self.loop, self.on_connection,
-                               priority=pyev.EV_MINPRI)
-        self.watcher.start()
+        self.pool = SinkPool(self.loop, self.context, frontend)
+        self.watchers = [pyev.Io(self.socket, pyev.EV_READ,
+                                 self.loop, self.on_connection,
+                                 priority=pyev.EV_MINPRI)]
+        self.watchers.extend([pyev.Signal(sig, self.loop, self.on_signal)
+                              for sig in STOPSIGNALS])
 
-    cpdef on_connection(self, object watcher, object revents):
+    def on_connection(self, object watcher, object revents):
+        while True:
+            try:
+                result = self.socket.accept()
+            except _socket.error, err:
+                if err[0] in NONBLOCKING:
+                    return
+                raise
+            client_socket = result[0]
+            client_socket.setblocking(0)
+            client_socket.setsockopt(_socket.SOL_TCP, _socket.TCP_NODELAY, 1)
+            client_socket.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
+            self.connections.add(
+                Connection(self.pool, self.loop, client_socket, self.on_close))
+
+    def on_signal(self, object watcher, object revents):
+        self.stop()
+
+    def on_close(self, Connection connection):
         try:
-            result = self.socket.accept()
-        except _socket.error, err:
-            if err[0] == EWOULDBLOCK:
-                return
-            raise
-        client_socket = result[0]
-        client_socket.setblocking(0)
-        client_socket.setsockopt(_socket.SOL_TCP, _socket.TCP_NODELAY, 1)
-        self.handle(client_socket)
+            self.connections.remove(connection)
+        except KeyError:
+            pass
 
-    cpdef on_close(self, ZMQSink sink):
-        if not sink.is_ready():
-            sink.close()
-        else:
-            self.pool.put(sink)
-
-    cdef inline handle(self, object socket):
-        Connection(self.on_close, self.loop, socket, self.pool.get())
-
-    cpdef start(self):
-        self.device.start()
+    def start(self):
+        self.socket.listen(50)
+        for watcher in self.watchers:
+            watcher.start()
         self.loop.start()
 
-    cpdef stop(self):
+    def stop(self):
         self.loop.stop(pyev.EVBREAK_ALL)
         self.socket.close()
-        self.device.stop()
-        self.watcher.stop()
-        self.watcher = None
+        while self.watchers:
+            self.watchers.pop().stop()
+        while self.connections:
+            self.connections.pop().close()
+        self.pool.close()
+

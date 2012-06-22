@@ -1,14 +1,15 @@
 # cython: profile=True
 cimport cython
+import errno
 from cpython cimport bool
 from cpython.bytes cimport PyBytes_Format, PyBytes_AsString
-from gevent.core import MAXPRI, MINPRI
-from gevent.socket import EAGAIN, error
+import _socket
 from struct import unpack_from, pack, calcsize
 from zmq.core.message cimport Frame
 from socket_zmq.connection cimport Connection
 import pyev
 
+NONBLOCKING = (errno.EAGAIN, errno.EWOULDBLOCK)
 
 cdef object LENGTH_FORMAT = '!i'
 cdef int LENGTH_SIZE = calcsize(LENGTH_FORMAT)
@@ -35,12 +36,12 @@ cdef class SocketSource(object):
         self.sent_bytes = 0
         self.status = WAIT_LEN
 
-    def __init__(self, object loop, object socket, Connection connection):
+    def __init__(self, object loop, object socket):
         self.socket = socket
         self.first_read_view = self.allocate_buffer(BUFFER_SIZE)
         self.read_view = None
         self.write_view = None
-        self.connection = connection
+        self.connection = None
         self.read_watcher = pyev.Io(self.socket, pyev.EV_READ,
                                     loop, self.on_readable,
                                     priority=pyev.EV_MINPRI)
@@ -53,6 +54,12 @@ cdef class SocketSource(object):
         buf = PyMemoryView_FromObject(
                             PyByteArray_FromStringAndSize(NULL, size))
         return buf
+
+    cdef bound(self, Connection connection):
+        self.connection = connection
+
+    cdef unbound(self):
+        self.connection = None
 
     cdef inline void start_listen_read(self):
         """Start listen read events."""
@@ -88,7 +95,7 @@ cdef class SocketSource(object):
         return self.status == WAIT_PROCESS
 
     @cython.locals(received=cython.int, message_length=cython.int)
-    cdef inline int read_length(self) except *:
+    cdef inline read_length(self):
         """Reads length of request."""
         first_read_view = self.first_read_view
         received = self.socket.recv_into(first_read_view, BUFFER_SIZE)
@@ -119,9 +126,9 @@ cdef class SocketSource(object):
         return received
 
     @cython.locals(readed=cython.int)
-    cdef inline void read(self) except *:
+    cdef inline read(self):
         """Reads data from stream and switch state."""
-        assert self.is_readable()
+        assert self.is_readable(), 'socket in non-readable state'
 
         readed = 0
 
@@ -142,9 +149,9 @@ cdef class SocketSource(object):
             self.status = WAIT_PROCESS
 
     @cython.locals(sent=cython.int)
-    cdef inline void write(self) except *:
+    cdef inline write(self):
         """Writes data from socket and switch state."""
-        assert self.is_writeable()
+        assert self.is_writeable(), 'socket in non writable state'
 
         sent = self.socket.send(self.write_view[self.sent_bytes:])
         self.sent_bytes += sent
@@ -155,20 +162,17 @@ cdef class SocketSource(object):
             self.len = 0
             self.sent_bytes = 0
 
-    cdef close(self):
+    cpdef close(self):
         """Closes connection."""
-        assert not self.is_closed()
+        assert not self.is_closed(), 'socket already closed'
         self.status = CLOSED
         self.stop_listen_read()
-        self.read_watcher = None
         self.stop_listen_write()
-        self.write_watcher = None
         self.socket.close()
         self.connection.close()
-        self.connection = None
 
     @cython.locals(message_length=cython.int)
-    cdef void ready(self, bool all_ok, object message) except *:
+    cdef ready(self, bool all_ok, object message):
         """The ready can switch Connection to three states:
 
             WAIT_LEN if request was oneway.
@@ -176,7 +180,7 @@ cdef class SocketSource(object):
             CLOSED if request throws unexpected exception.
 
         """
-        assert self.is_ready()
+        assert self.is_ready(), 'socket is not ready'
 
         if not all_ok:
             self.close()
@@ -197,28 +201,32 @@ cdef class SocketSource(object):
 
         self.len = message_length
 
-    cpdef on_readable(self, object watcher, object revents):
+    def on_readable(self, object watcher, object revents):
         try:
             while self.is_readable():
                 self.read()
             if self.is_ready():
                 self.connection.on_request(self.read_view[LENGTH_SIZE:])
-        except error, e:
-            if e.errno != EAGAIN:
-                self.close()
+        except _socket.error, e:
+            if e.errno in NONBLOCKING:
+                return
+            raise
+            self.close()
         except:
             self.close()
             raise
 
-    cpdef on_writable(self, object watcher, object revents):
+    def on_writable(self, object watcher, object revents):
         try:
             while self.is_writeable():
                 self.write()
             if self.is_readable():
                 self.stop_listen_write()
-        except error, e:
-            if e.errno != EAGAIN:
-                self.close()
+        except _socket.error, e:
+            if e.errno in NONBLOCKING:
+                return
+            self.close()
+            raise
         except:
             self.close()
             raise

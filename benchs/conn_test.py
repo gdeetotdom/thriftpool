@@ -35,9 +35,12 @@ while elapsed < delta:
 
     t = _timer()
     for i in xrange(iterations):
-        transport.open()
-        client.execute(task)
-        transport.close()
+        try:
+            transport.open()
+            client.execute(task)
+            transport.close()
+        except Exception, e:
+            raise
     elapsed = _timer() - t
 
 print iterations, 'objects passed through connection in', elapsed, 'seconds'

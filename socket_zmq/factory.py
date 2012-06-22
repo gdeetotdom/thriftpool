@@ -11,22 +11,38 @@ import _socket
 class Server(object):
 
     def __init__(self, address, context, frontend, backend):
+        self.context = context
+        self.frontend = frontend
+        self.backend = backend
         self.socket = self.get_listener(address)
-        self.server = StreamServer(self.socket, context, frontend, backend)
+        self.server = self.create_server()
+        self.device = self.create_device()
 
-    def get_listener(self, address, backlog=50, family=_socket.AF_INET):
+    def create_server(self):
+        server = StreamServer(self.socket, self.context, self.frontend)
+        return server
+
+    def create_device(self):
+        device = ThreadDevice(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
+        device.context_factory = lambda: self.context
+        device.bind_in(self.frontend)
+        device.bind_out(self.backend)
+        return device
+
+    def get_listener(self, address, family=_socket.AF_INET):
         """A shortcut to create a TCP socket, bind it and put it into listening state."""
         sock = socket.socket(family=family)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(address)
-        sock.listen(backlog)
         sock.setblocking(0)
         return sock
 
     def serve_forever(self):
-        self.server.start()
-
-    def stop(self):
-        self.server.stop()
+        self.device.start()
+        try:
+            self.server.start()
+        finally:
+            self.server.stop()
 
 
 class Worker(object):
@@ -75,14 +91,6 @@ class Factory(object):
         self.backend = backend
 
         super(Factory, self).__init__()
-
-    def Device(self):
-        device = ThreadDevice(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
-        device.context_factory = lambda: self.context
-        device.bind_in(self.frontend)
-        device.bind_out(self.backend)
-
-        return device
 
     def Server(self, listener):
         server = Server(listener, self.context, self.frontend, self.backend)

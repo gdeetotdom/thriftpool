@@ -13,12 +13,15 @@ cdef enum States:
 cdef class ZMQSink:
 
     cdef Socket socket
-    cdef object on_response
+    cdef Connection connection
     cdef object request
     cdef States status
 
     cdef object read_watcher
     cdef object write_watcher
+
+    cdef bound(self, Connection connection)
+    cdef unbound(self)
 
     cdef inline void start_listen_read(self)
     cdef inline void stop_listen_read(self)
@@ -30,10 +33,7 @@ cdef class ZMQSink:
     cdef inline bint is_ready(self)
     cdef inline bint is_closed(self)
 
-    cdef inline void read(self) except *
-    cdef inline void write(self) except *
-    cdef close(self)
-
-    cdef void ready(self, object request) except *
-    cpdef on_readable(self, object watcher, object revents)
-    cpdef on_writable(self, object watcher, object revents)
+    cdef inline read(self)
+    cdef inline write(self)
+    cdef inline ready(self, object request)
+    cpdef close(self)
