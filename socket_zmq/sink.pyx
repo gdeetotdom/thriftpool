@@ -1,7 +1,7 @@
 # cython: profile=True
 cimport cython
 from cpython cimport bool
-from zmq.core.constants import NOBLOCK, EAGAIN, FD
+from zmq.core.constants import NOBLOCK, EAGAIN, FD, EVENTS, POLLIN, POLLOUT
 from zmq.core.error import ZMQError
 import pyev
 from socket_zmq.connection cimport Connection
@@ -17,13 +17,9 @@ cdef class ZMQSink(object):
         self.connection = None
         self.request = None
         self.status = WAIT_MESSAGE
-        self.read_watcher = pyev.Io(self.socket.getsockopt(FD), pyev.EV_READ,
-                                    loop, self.on_readable,
-                                    priority=pyev.EV_MAXPRI)
-        self.write_watcher = pyev.Io(self.socket.getsockopt(FD), pyev.EV_WRITE,
-                                     loop, self.on_writable,
-                                     priority=pyev.EV_MAXPRI)
-        self.start_listen_read()
+        self.fileno = self.socket.getsockopt(FD)
+        self.watcher = pyev.Io(self.fileno, pyev.EV_READ, loop, self.on_io)
+        self.watcher.start()
 
     cdef bound(self, Connection connection):
         self.connection = connection
@@ -31,21 +27,16 @@ cdef class ZMQSink(object):
     cdef unbound(self):
         self.connection = None
 
-    cdef inline void start_listen_read(self):
-        """Start listen read events."""
-        self.read_watcher.start()
-
-    cdef inline void stop_listen_read(self):
-        """Stop listen read events."""
-        self.read_watcher.stop()
+    cdef inline void reset(self, events):
+        self.watcher.stop()
+        self.watcher.set(self.fileno, events)
+        self.watcher.start()
 
     cdef inline void start_listen_write(self):
-        """Start listen write events."""
-        self.write_watcher.start()
+        self.reset(pyev.EV_READ | pyev.EV_WRITE)
 
     cdef inline void stop_listen_write(self):
-        """Stop listen write events."""
-        self.write_watcher.stop()
+        self.reset(pyev.EV_READ)
 
     @cython.profile(False)
     cdef inline bint is_writeable(self):
@@ -72,15 +63,16 @@ cdef class ZMQSink(object):
     cdef inline write(self):
         assert self.is_writeable(), 'sink not writable'
         self.socket.send(self.request, NOBLOCK)
+        self.request = None
         self.status = READ_REPLY
 
     @cython.locals(ready=cython.bint)
     cpdef close(self):
         assert not self.is_closed(), 'sink already closed'
         self.status = CLOSED
-        self.stop_listen_read()
-        self.stop_listen_write()
         self.socket.close()
+        self.watcher.stop()
+        self.watcher = None
 
     cdef inline ready(self, object request):
         assert self.is_ready(), 'sink not ready'
@@ -88,10 +80,13 @@ cdef class ZMQSink(object):
         self.request = request
         self.start_listen_write()
 
-    def on_readable(self, object watcher, object revents):
+    cpdef on_io(self, object watcher, object revents):
         try:
-            while self.is_readable():
-                self.read()
+            events = self.socket.getsockopt(EVENTS)
+            if events & POLLIN:
+                self.on_readable()
+            elif events & POLLOUT:
+                self.on_writable()
         except ZMQError, e:
             if e.errno == EAGAIN:
                 return
@@ -101,18 +96,12 @@ cdef class ZMQSink(object):
             self.close()
             raise
 
-    def on_writable(self, object watcher, object revents):
-        try:
-            while self.is_writeable():
-                self.write()
-        except ZMQError, e:
-            if e.errno == EAGAIN:
-                return
-            self.close()
-            raise
-        except:
-            self.close()
-            raise
-        else:
-            self.stop_listen_write()
-            self.on_readable(watcher, revents)
+    cdef on_readable(self):
+        while self.is_readable():
+            self.read()
+
+    cdef on_writable(self):
+        while self.is_writeable():
+            self.write()
+        self.stop_listen_write()
+        self.on_readable()

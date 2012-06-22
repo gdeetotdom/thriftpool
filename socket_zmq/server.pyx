@@ -18,8 +18,9 @@ STOPSIGNALS = (signal.SIGINT, signal.SIGTERM)
 
 cdef class SinkPool(object):
 
-    def __init__(self, object loop, Context context, object frontend):
+    def __init__(self, object loop, Context context, object frontend, object size):
         self.loop = loop
+        self.size = size
         self.pool = deque()
         self.context = context
         self.frontend = frontend
@@ -40,7 +41,10 @@ cdef class SinkPool(object):
         return sink
 
     cdef inline put(self, ZMQSink sink):
-        self.pool.append(sink)
+        if len(self.pool) >= self.size:
+            sink.close()
+        else:
+            self.pool.append(sink)
 
     cpdef close(self):
         while self.pool:
@@ -54,7 +58,7 @@ cdef class StreamServer(object):
         self.loop = pyev.Loop()
         self.context = context
         self.socket = socket._sock
-        self.pool = SinkPool(self.loop, self.context, frontend)
+        self.pool = SinkPool(self.loop, self.context, frontend, 128)
         self.watchers = [pyev.Io(self.socket, pyev.EV_READ,
                                  self.loop, self.on_connection,
                                  priority=pyev.EV_MINPRI)]

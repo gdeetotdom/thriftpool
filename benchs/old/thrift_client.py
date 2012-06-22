@@ -20,7 +20,7 @@ delta = 5
 # Init thrift connection and protocol handlers
 transport = TSocket.TSocket(host, port)
 transport = TTransport.TFramedTransport(transport)
-protocol = TBinaryProtocol.TBinaryProtocol(transport)
+protocol = TBinaryProtocol.TBinaryProtocolAccelerated(transport)
 
 # Set client to our Example
 client = Broker.Client(protocol)

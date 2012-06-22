@@ -16,15 +16,13 @@ cdef class ZMQSink:
     cdef Connection connection
     cdef object request
     cdef States status
-
-    cdef object read_watcher
-    cdef object write_watcher
+    cdef object fileno
+    cdef object watcher
 
     cdef bound(self, Connection connection)
     cdef unbound(self)
 
-    cdef inline void start_listen_read(self)
-    cdef inline void stop_listen_read(self)
+    cdef inline void reset(self, events)
     cdef inline void start_listen_write(self)
     cdef inline void stop_listen_write(self)
 
@@ -37,3 +35,8 @@ cdef class ZMQSink:
     cdef inline write(self)
     cdef inline ready(self, object request)
     cpdef close(self)
+
+    cpdef on_io(self, object watcher, object revents)
+    cdef on_readable(self)
+    cdef on_writable(self)
+

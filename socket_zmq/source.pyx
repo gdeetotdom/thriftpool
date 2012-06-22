@@ -42,13 +42,8 @@ cdef class SocketSource(object):
         self.read_view = None
         self.write_view = None
         self.connection = None
-        self.read_watcher = pyev.Io(self.socket, pyev.EV_READ,
-                                    loop, self.on_readable,
-                                    priority=pyev.EV_MINPRI)
-        self.write_watcher = pyev.Io(self.socket, pyev.EV_WRITE,
-                                     loop, self.on_writable,
-                                     priority=pyev.EV_MAXPRI)
-        self.start_listen_read()
+        self.watcher = pyev.Io(self.socket, pyev.EV_READ, loop, self.on_io)
+        self.watcher.start()
 
     cdef inline object allocate_buffer(self, Py_ssize_t size):
         buf = PyMemoryView_FromObject(
@@ -61,20 +56,16 @@ cdef class SocketSource(object):
     cdef unbound(self):
         self.connection = None
 
-    cdef inline void start_listen_read(self):
-        """Start listen read events."""
-        self.read_watcher.start()
-
-    cdef inline void stop_listen_read(self):
-        """Stop listen read events."""
-        self.read_watcher.stop()
+    cdef inline void reset(self, events):
+        self.watcher.stop()
+        self.watcher.set(self.socket, events)
+        self.watcher.start()
 
     cdef inline void start_listen_write(self):
-        """Start listen write events."""
-        self.write_watcher.start()
+        self.reset(pyev.EV_READ | pyev.EV_WRITE)
 
     cdef inline void stop_listen_write(self):
-        self.write_watcher.stop()
+        self.reset(pyev.EV_READ)
 
     @cython.profile(False)
     cdef inline bint is_writeable(self):
@@ -166,9 +157,9 @@ cdef class SocketSource(object):
         """Closes connection."""
         assert not self.is_closed(), 'socket already closed'
         self.status = CLOSED
-        self.stop_listen_read()
-        self.stop_listen_write()
         self.socket.close()
+        self.watcher.stop()
+        self.watcher = None
         self.connection.close()
 
     @cython.locals(message_length=cython.int)
@@ -201,32 +192,29 @@ cdef class SocketSource(object):
 
         self.len = message_length
 
-    def on_readable(self, object watcher, object revents):
+    cpdef on_io(self, object watcher, object revents):
         try:
-            while self.is_readable():
-                self.read()
-            if self.is_ready():
-                self.connection.on_request(self.read_view[LENGTH_SIZE:])
+            if revents & pyev.EV_READ:
+                self.on_readable()
+            else:
+                self.on_writable()
         except _socket.error, e:
             if e.errno in NONBLOCKING:
                 return
-            raise
             self.close()
+            raise
         except:
             self.close()
             raise
 
-    def on_writable(self, object watcher, object revents):
-        try:
-            while self.is_writeable():
-                self.write()
-            if self.is_readable():
-                self.stop_listen_write()
-        except _socket.error, e:
-            if e.errno in NONBLOCKING:
-                return
-            self.close()
-            raise
-        except:
-            self.close()
-            raise
+    cdef on_readable(self):
+        while self.is_readable():
+            self.read()
+        if self.is_ready():
+            self.connection.on_request(self.read_view[LENGTH_SIZE:])
+
+    cdef on_writable(self):
+        while self.is_writeable():
+            self.write()
+        if self.is_readable():
+            self.stop_listen_write()

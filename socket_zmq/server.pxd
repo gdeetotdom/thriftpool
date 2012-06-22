@@ -4,6 +4,7 @@ from zmq.core.context cimport Context
 
 cdef class SinkPool(object):
 
+    cdef int size
     cdef object loop
     cdef object pool
     cdef Context context

@@ -1,7 +1,7 @@
 import socket
 import zmq
 from socket_zmq.server import StreamServer
-from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.transport import TTransport
 from zmq.devices import ThreadDevice
 import logging
@@ -50,7 +50,7 @@ class Worker(object):
     def __init__(self, context, backend, processor):
         self.context = context
         self.backend = backend
-        self.in_protocol = TBinaryProtocolFactory()
+        self.in_protocol = TBinaryProtocolAcceleratedFactory()
         self.out_protocol = self.in_protocol
         self.processor = processor
 

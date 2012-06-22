@@ -10,7 +10,7 @@ from thrift.transport import TSocket
 from thrift.transport import TTransport
 from thrift.protocol import TBinaryProtocol
 from thrift.server import TServer
-from thrift.protocol.TBinaryProtocol import TBinaryProtocolFactory
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 
 
 class BrokerHandler:
@@ -24,8 +24,8 @@ listener = ('localhost', 9090)
 handler = BrokerHandler()
 processor = Broker.Processor(handler)
 transport = TSocket.TServerSocket(listener[0], listener[1])
-tfactory = TBinaryProtocolFactory()
-pfactory = TBinaryProtocolFactory()
+tfactory = TBinaryProtocolAcceleratedFactory()
+pfactory = TBinaryProtocolAcceleratedFactory()
 
 # set server
 server = TNonblockingServer(processor, transport, tfactory, pfactory)

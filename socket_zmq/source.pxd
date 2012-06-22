@@ -32,16 +32,14 @@ cdef class SocketSource:
     cdef object read_view
     cdef object first_read_view
 
-    cdef object read_watcher
-    cdef object write_watcher
+    cdef object watcher
 
     cdef inline object allocate_buffer(self, Py_ssize_t size)
 
     cdef bound(self, Connection connection)
     cdef unbound(self)
 
-    cdef inline void start_listen_read(self)
-    cdef inline void stop_listen_read(self)
+    cdef inline void reset(self, events)
     cdef inline void start_listen_write(self)
     cdef inline void stop_listen_write(self)
 
@@ -55,3 +53,7 @@ cdef class SocketSource:
     cdef inline write(self)
     cdef ready(self, bool all_ok, object message)
     cpdef close(self)
+
+    cpdef on_io(self, object watcher, object revents)
+    cdef on_readable(self)
+    cdef on_writable(self)
