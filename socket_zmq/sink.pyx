@@ -1,42 +1,23 @@
 # cython: profile=True
 cimport cython
+from pyev import EV_ERROR
 from cpython cimport bool
+from logging import getLogger
 from zmq.core.constants import NOBLOCK, EAGAIN, FD, EVENTS, POLLIN, POLLOUT
 from zmq.core.error import ZMQError
-import pyev
-from socket_zmq.connection cimport Connection
-from zmq.core.libzmq cimport *
 from zmq.core.socket cimport Socket
-from socket_zmq.connection cimport Connection
+from socket_zmq.base cimport BaseSocket
+
+logger = getLogger(__name__)
 
 
-cdef class ZMQSink(object):
+cdef class ZMQSink(BaseSocket):
 
     def __init__(self, object loop, Socket socket):
+        self.request = self.callback = None
         self.socket = socket
-        self.connection = None
-        self.request = None
         self.status = WAIT_MESSAGE
-        self.fileno = self.socket.getsockopt(FD)
-        self.watcher = pyev.Io(self.fileno, pyev.EV_READ, loop, self.on_io)
-        self.watcher.start()
-
-    cdef bound(self, Connection connection):
-        self.connection = connection
-
-    cdef unbound(self):
-        self.connection = None
-
-    cdef inline void reset(self, events):
-        self.watcher.stop()
-        self.watcher.set(self.fileno, events)
-        self.watcher.start()
-
-    cdef inline void start_listen_write(self):
-        self.reset(pyev.EV_READ | pyev.EV_WRITE)
-
-    cdef inline void stop_listen_write(self):
-        self.reset(pyev.EV_READ)
+        BaseSocket.__init__(self, loop, self.socket.getsockopt(FD))
 
     @cython.profile(False)
     cdef inline bint is_writeable(self):
@@ -56,12 +37,14 @@ cdef class ZMQSink(object):
 
     cdef inline read(self):
         assert self.is_readable(), 'sink not readable'
-        response = self.socket.recv(NOBLOCK)
-        self.connection.on_response(response)
+        assert self.callback is not None, 'callback is none'
+        self.callback(True, self.socket.recv(NOBLOCK))
+        self.callback = None
         self.status = WAIT_MESSAGE
 
     cdef inline write(self):
         assert self.is_writeable(), 'sink not writable'
+        assert self.request is not None, 'request is none'
         self.socket.send(self.request, NOBLOCK)
         self.request = None
         self.status = READ_REPLY
@@ -71,27 +54,30 @@ cdef class ZMQSink(object):
         assert not self.is_closed(), 'sink already closed'
         self.status = CLOSED
         self.socket.close()
-        self.watcher.stop()
-        self.watcher = None
+        BaseSocket.close(self)
 
-    cdef inline ready(self, object request):
+    cpdef ready(self, object callback, object request):
         assert self.is_ready(), 'sink not ready'
-        self.status = SEND_REQUEST
+        self.callback = callback
         self.request = request
-        self.start_listen_write()
+        self.status = SEND_REQUEST
+        self.wait_writable()
 
-    cpdef on_io(self, object watcher, object revents):
+    cpdef cb_io(self, object watcher, object revents):
+        if revents & EV_ERROR:
+            self.close()
+            return
         try:
             events = self.socket.getsockopt(EVENTS)
+            if events & POLLOUT:
+                self.on_writable()
             if events & POLLIN:
                 self.on_readable()
-            elif events & POLLOUT:
-                self.on_writable()
         except ZMQError, e:
             if e.errno == EAGAIN:
                 return
             self.close()
-            raise
+            logger.exception(e)
         except:
             self.close()
             raise
@@ -103,5 +89,6 @@ cdef class ZMQSink(object):
     cdef on_writable(self):
         while self.is_writeable():
             self.write()
-        self.stop_listen_write()
-        self.on_readable()
+        if self.is_readable():
+            self.wait_readable()
+            self.on_readable()

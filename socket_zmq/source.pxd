@@ -1,6 +1,7 @@
 from cpython cimport bool
-from zmq.core.message cimport Frame
-from socket_zmq.connection cimport Connection
+from socket_zmq.base cimport BaseSocket
+from socket_zmq.server cimport SinkPool
+from socket_zmq.sink cimport ZMQSink
 
 
 cdef extern from "Python.h":
@@ -17,7 +18,7 @@ cdef enum States:
     CLOSED = 4
 
 
-cdef class SocketSource:
+cdef class SocketSource(BaseSocket):
 
     cdef States status
 
@@ -25,23 +26,14 @@ cdef class SocketSource:
     cdef int recv_bytes
     cdef int sent_bytes
 
+    cdef SinkPool pool
+    cdef ZMQSink sink
+    cdef object on_close
     cdef object socket
-    cdef Connection connection
 
     cdef object write_view
     cdef object read_view
     cdef object first_read_view
-
-    cdef object watcher
-
-    cdef inline object allocate_buffer(self, Py_ssize_t size)
-
-    cdef bound(self, Connection connection)
-    cdef unbound(self)
-
-    cdef inline void reset(self, events)
-    cdef inline void start_listen_write(self)
-    cdef inline void stop_listen_write(self)
 
     cdef inline bint is_writeable(self)
     cdef inline bint is_readable(self)
@@ -51,9 +43,10 @@ cdef class SocketSource:
     cdef inline read_length(self)
     cdef inline read(self)
     cdef inline write(self)
-    cdef ready(self, bool all_ok, object message)
-    cpdef close(self)
 
-    cpdef on_io(self, object watcher, object revents)
+    cpdef close(self)
+    cpdef ready(self, bool all_ok, object message)
+
+    cpdef cb_io(self, object watcher, object revents)
     cdef on_readable(self)
     cdef on_writable(self)

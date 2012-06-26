@@ -1,6 +1,6 @@
 # cython: profile=True
 from zmq.core.socket cimport Socket
-from socket_zmq.connection cimport Connection
+from socket_zmq.base cimport BaseSocket
 
 
 cdef enum States:
@@ -10,21 +10,12 @@ cdef enum States:
     CLOSED = 4
 
 
-cdef class ZMQSink:
+cdef class ZMQSink(BaseSocket):
 
+    cdef object callback
     cdef Socket socket
-    cdef Connection connection
     cdef object request
     cdef States status
-    cdef object fileno
-    cdef object watcher
-
-    cdef bound(self, Connection connection)
-    cdef unbound(self)
-
-    cdef inline void reset(self, events)
-    cdef inline void start_listen_write(self)
-    cdef inline void stop_listen_write(self)
 
     cdef inline bint is_writeable(self)
     cdef inline bint is_readable(self)
@@ -33,10 +24,10 @@ cdef class ZMQSink:
 
     cdef inline read(self)
     cdef inline write(self)
-    cdef inline ready(self, object request)
-    cpdef close(self)
 
-    cpdef on_io(self, object watcher, object revents)
+    cpdef close(self)
+    cpdef ready(self, object callback, object request)
+
+    cpdef cb_io(self, object watcher, object revents)
     cdef on_readable(self)
     cdef on_writable(self)
-

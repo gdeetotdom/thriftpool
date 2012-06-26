@@ -7,6 +7,8 @@ from zmq.devices import ThreadDevice
 import logging
 import _socket
 
+logging.basicConfig(level=logging.DEBUG)
+
 
 class Server(object):
 

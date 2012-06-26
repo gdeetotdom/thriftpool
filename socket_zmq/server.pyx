@@ -1,8 +1,8 @@
 # cython: profile=True
 import cython
 import errno
-from socket_zmq.connection cimport Connection
 from socket_zmq.sink cimport ZMQSink
+from socket_zmq.source cimport SocketSource
 from zmq.core.socket cimport Socket
 from zmq.core.context cimport Context
 from collections import deque
@@ -76,21 +76,20 @@ cdef class StreamServer(object):
             client_socket = result[0]
             client_socket.setblocking(0)
             client_socket.setsockopt(_socket.SOL_TCP, _socket.TCP_NODELAY, 1)
-            client_socket.setsockopt(_socket.SOL_SOCKET, _socket.SO_REUSEADDR, 1)
-            self.connections.add(
-                Connection(self.pool, self.loop, client_socket, self.on_close))
+            self.connections.add(SocketSource(self.pool, self.loop,
+                                              client_socket, self.on_close))
 
     def on_signal(self, object watcher, object revents):
         self.stop()
 
-    def on_close(self, Connection connection):
+    def on_close(self, SocketSource source):
         try:
-            self.connections.remove(connection)
+            self.connections.remove(source)
         except KeyError:
             pass
 
     def start(self):
-        self.socket.listen(50)
+        self.socket.listen(128)
         for watcher in self.watchers:
             watcher.start()
         self.loop.start()
