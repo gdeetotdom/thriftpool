@@ -1,4 +1,3 @@
-# cython: profile=True
 import cython
 import errno
 from socket_zmq.sink cimport ZMQSink

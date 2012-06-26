@@ -1,7 +1,7 @@
-from cpython cimport bool
 from socket_zmq.base cimport BaseSocket
 from socket_zmq.server cimport SinkPool
 from socket_zmq.sink cimport ZMQSink
+from cpython cimport array
 
 
 cdef extern from "Python.h":
@@ -31,9 +31,11 @@ cdef class SocketSource(BaseSocket):
     cdef object on_close
     cdef object socket
 
-    cdef object write_view
-    cdef object read_view
-    cdef object first_read_view
+    cdef char[:] write_view
+    cdef char[:] read_view
+
+    cdef char[:] resize(self, char[:] view, Py_ssize_t size)
+    cdef bytes tobytes(self, char[:] view, Py_ssize_t size, Py_ssize_t offset=*)
 
     cdef inline bint is_writeable(self)
     cdef inline bint is_readable(self)
@@ -45,7 +47,7 @@ cdef class SocketSource(BaseSocket):
     cdef inline write(self)
 
     cpdef close(self)
-    cpdef ready(self, bool all_ok, object message)
+    cpdef ready(self, object all_ok, object message)
 
     cpdef cb_io(self, object watcher, object revents)
     cdef on_readable(self)

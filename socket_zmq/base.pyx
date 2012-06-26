@@ -1,4 +1,3 @@
-# cython: profile=True
 """Contains class:`BaseSocket`."""
 from pyev import Io, EV_READ, EV_WRITE
 
