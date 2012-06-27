@@ -1,7 +1,7 @@
 cimport cython
 from logging import getLogger
 from pyev import EV_READ, EV_WRITE, EV_ERROR
-from struct import unpack, pack, calcsize
+from struct import unpack_from, pack, calcsize
 import _socket
 import errno
 from socket_zmq.server cimport SinkPool
@@ -15,6 +15,12 @@ NONBLOCKING = (errno.EAGAIN, errno.EWOULDBLOCK)
 LENGTH_FORMAT = '!i'
 LENGTH_SIZE = calcsize(LENGTH_FORMAT)
 BUFFER_SIZE = 4096
+
+
+cdef inline object allocate_buffer(Py_ssize_t size):
+    """Create new style python buffer of given size."""
+    return PyMemoryView_FromObject(
+                        PyByteArray_FromStringAndSize(NULL, size))
 
 
 cdef class SocketSource(BaseSocket):
@@ -34,8 +40,8 @@ cdef class SocketSource(BaseSocket):
     def __init__(self, SinkPool pool, object loop, object socket,
                  object on_close):
         self.sent_bytes = self.recv_bytes = self.len = 0
-        self.write_view = None
-        self.read_view = self.resize(array.array("c"), BUFFER_SIZE)
+        self.buffer = array.array("c")
+        self.resize(BUFFER_SIZE)
         self.status = WAIT_LEN
         self.on_close = on_close
         self.socket = socket
@@ -43,16 +49,10 @@ cdef class SocketSource(BaseSocket):
         self.sink = self.pool.get()
         BaseSocket.__init__(self, loop, self.socket.fileno())
 
-    @cython.locals(a=array.array)
-    cdef char[:] resize(self, char[:] view, Py_ssize_t size):
-        a = view.base
+    cdef inline void resize(self, Py_ssize_t size):
+        cdef array.array[char] a = self.buffer.base
         array.resize_smart(a, size)
-        return a
-
-    cdef bytes tobytes(self, char[:] view, Py_ssize_t size, Py_ssize_t offset=0):
-        cdef array.array a = self.read_view.base
-        cdef char* s = a._c
-        return s[offset:size]
+        self.buffer = a
 
     @cython.profile(False)
     cdef inline bint is_writeable(self):
@@ -77,7 +77,8 @@ cdef class SocketSource(BaseSocket):
     @cython.locals(received=cython.int, message_length=cython.int)
     cdef inline read_length(self):
         """Reads length of request."""
-        received = self.socket.recv_into(self.read_view[0:], len(self.read_view))
+        received = self.socket.recv_into(self.buffer,
+                                         len(self.buffer))
 
         if received == 0:
             # if we read 0 bytes and message is empty, it means client
@@ -86,14 +87,14 @@ cdef class SocketSource(BaseSocket):
             return 0
 
         assert received >= LENGTH_SIZE, "message length can't be read"
-        message_length = unpack(LENGTH_FORMAT,
-                                self.tobytes(self.read_view, LENGTH_SIZE))[0]
+        message_length = unpack_from(LENGTH_FORMAT,
+                                     self.buffer.base[0:LENGTH_SIZE])[0]
         assert message_length > 0, "negative or empty frame size, it seems" \
                                    " client doesn't use FramedTransport"
 
         self.len = message_length + LENGTH_SIZE
-        if len(self.read_view) < self.len:
-            self.read_view = self.resize(self.read_view, self.len)
+        if len(self.buffer) < self.len:
+            self.resize(self.len)
 
         self.status = WAIT_MESSAGE
 
@@ -111,7 +112,7 @@ cdef class SocketSource(BaseSocket):
                 return
 
         elif self.status == WAIT_MESSAGE:
-            readed = self.socket.recv_into(self.read_view[self.recv_bytes:],
+            readed = self.socket.recv_into(self.buffer[self.recv_bytes:],
                                            self.len - self.recv_bytes)
 
         assert readed > 0, "can't read frame from socket"
@@ -125,11 +126,10 @@ cdef class SocketSource(BaseSocket):
         """Writes data from socket and switch state."""
         assert self.is_writeable(), 'socket in non writable state'
 
-        self.sent_bytes += self.socket.send(self.write_view[self.sent_bytes:self.len])
+        self.sent_bytes += self.socket.send(self.buffer[self.sent_bytes:self.len])
 
         if self.sent_bytes == self.len:
             self.status = WAIT_LEN
-            self.write_view = None
             self.len = 0
             self.sent_bytes = 0
 
@@ -145,6 +145,7 @@ cdef class SocketSource(BaseSocket):
         self.sink = None
         self.on_close(self)
         self.on_close = None
+        self.buffer = None
         BaseSocket.close(self)
 
     @cython.locals(message_length=cython.int, response=array.array)
@@ -165,13 +166,13 @@ cdef class SocketSource(BaseSocket):
         message_length = len(message)
         if message_length == 0:
             # it was a oneway request, do not write answer
-            self.message = None
             self.status = WAIT_LEN
         else:
-            response = array.array('c')
-            response.fromstring(pack(LENGTH_FORMAT, message_length))
-            response.fromstring(message)
-            self.write_view = response
+            self.resize(0)
+            s = pack(LENGTH_FORMAT, message_length)
+            array.extend_buffer(self.buffer.base, s, LENGTH_SIZE)
+            array.extend_buffer(self.buffer.base, message, message_length)
+            self.buffer = self.buffer.base
             message_length += LENGTH_SIZE
             self.status = SEND_ANSWER
             self.wait_writable()
@@ -199,9 +200,7 @@ cdef class SocketSource(BaseSocket):
         while self.is_readable():
             self.read()
         if self.is_ready():
-            self.sink.ready(self.ready, self.read_view[LENGTH_SIZE:self.len])
-            if len(self.read_view) > BUFFER_SIZE:
-                self.read_view = self.resize(self.read_view, BUFFER_SIZE)
+            self.sink.ready(self.ready, self.buffer[LENGTH_SIZE:self.len])
 
     cdef on_writable(self):
         while self.is_writeable():

@@ -31,11 +31,9 @@ cdef class SocketSource(BaseSocket):
     cdef object on_close
     cdef object socket
 
-    cdef char[:] write_view
-    cdef char[:] read_view
+    cdef char[:] buffer
 
-    cdef char[:] resize(self, char[:] view, Py_ssize_t size)
-    cdef bytes tobytes(self, char[:] view, Py_ssize_t size, Py_ssize_t offset=*)
+    cdef inline void resize(self, Py_ssize_t size)
 
     cdef inline bint is_writeable(self)
     cdef inline bint is_readable(self)

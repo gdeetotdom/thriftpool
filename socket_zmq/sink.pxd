@@ -14,7 +14,7 @@ cdef class ZMQSink(BaseSocket):
 
     cdef object callback
     cdef Socket socket
-    cdef char[:] request
+    cdef object request
     cdef States status
 
     cdef inline bint is_writeable(self)
