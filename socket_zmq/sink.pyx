@@ -55,7 +55,7 @@ cdef class ZMQSink(BaseSocket):
         self.socket.close()
         BaseSocket.close(self)
 
-    cpdef ready(self, object callback, char[:] request):
+    cpdef ready(self, object callback, object request):
         assert self.is_ready(), 'sink not ready'
         self.callback = callback
         self.request = request

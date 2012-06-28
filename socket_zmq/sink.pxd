@@ -26,7 +26,7 @@ cdef class ZMQSink(BaseSocket):
     cdef inline write(self)
 
     cpdef close(self)
-    cpdef ready(self, object callback, char[:] request)
+    cpdef ready(self, object callback, object request)
 
     cpdef cb_io(self, object watcher, object revents)
     cdef on_readable(self)

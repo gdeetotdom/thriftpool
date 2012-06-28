@@ -6,8 +6,6 @@ from cpython cimport array
 
 cdef extern from "Python.h":
     ctypedef int Py_ssize_t
-    object PyByteArray_FromStringAndSize(char *v, Py_ssize_t len)
-    object PyMemoryView_FromObject(object)
 
 
 cdef enum States:
@@ -20,11 +18,12 @@ cdef enum States:
 
 cdef class SocketSource(BaseSocket):
 
-    cdef States status
+    cdef object struct
 
-    cdef int len
-    cdef int recv_bytes
-    cdef int sent_bytes
+    cdef States status
+    cdef Py_ssize_t len
+    cdef Py_ssize_t recv_bytes
+    cdef Py_ssize_t sent_bytes
 
     cdef SinkPool pool
     cdef ZMQSink sink
@@ -32,8 +31,10 @@ cdef class SocketSource(BaseSocket):
     cdef object socket
 
     cdef char[:] buffer
+    cdef object view
 
     cdef inline void resize(self, Py_ssize_t size)
+    cdef inline void resize_if_needed(self, Py_ssize_t size)
 
     cdef inline bint is_writeable(self)
     cdef inline bint is_readable(self)
