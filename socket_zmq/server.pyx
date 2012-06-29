@@ -8,16 +8,16 @@ from collections import deque
 import zmq
 import _socket
 import pyev
-import weakref
 import signal
+from pyev import EV_READ, EV_MINPRI, Io
 
 NONBLOCKING = (errno.EAGAIN, errno.EWOULDBLOCK)
-STOPSIGNALS = (signal.SIGINT, signal.SIGTERM)
 
 
 cdef class SinkPool(object):
 
-    def __init__(self, object loop, Context context, object frontend, object size):
+    def __init__(self, object loop, Context context, object frontend,
+                 object size):
         self.loop = loop
         self.size = size
         self.pool = deque()
@@ -52,17 +52,17 @@ cdef class SinkPool(object):
 
 cdef class StreamServer(object):
 
-    def __init__(self, object socket, object context, object frontend):
+    def __init__(self, object loop, object socket, object context,
+                 object frontend, object pool_size=None, object backlog=None):
         self.connections = set()
-        self.loop = pyev.Loop()
-        self.context = context
+        self.loop = loop
         self.socket = socket._sock
-        self.pool = SinkPool(self.loop, self.context, frontend, 128)
-        self.watchers = [pyev.Io(self.socket, pyev.EV_READ,
-                                 self.loop, self.on_connection,
-                                 priority=pyev.EV_MINPRI)]
-        self.watchers.extend([pyev.Signal(sig, self.loop, self.on_signal)
-                              for sig in STOPSIGNALS])
+        self.context = context
+        self.pool = SinkPool(self.loop, self.context, frontend,
+                             pool_size or 128)
+        self.backlog = backlog or 128
+        self.watcher = Io(self.socket, EV_READ, self.loop,
+                          self.on_connection, priority=EV_MINPRI)
 
     def on_connection(self, object watcher, object revents):
         while True:
@@ -76,10 +76,8 @@ cdef class StreamServer(object):
             client_socket.setblocking(0)
             client_socket.setsockopt(_socket.SOL_TCP, _socket.TCP_NODELAY, 1)
             self.connections.add(SocketSource(self.pool, self.loop,
-                                              client_socket, self.on_close))
-
-    def on_signal(self, object watcher, object revents):
-        self.stop()
+                                              client_socket, result[1],
+                                              self.on_close))
 
     def on_close(self, SocketSource source):
         try:
@@ -88,17 +86,12 @@ cdef class StreamServer(object):
             pass
 
     def start(self):
-        self.socket.listen(128)
-        for watcher in self.watchers:
-            watcher.start()
-        self.loop.start()
+        self.socket.listen(self.backlog)
+        self.watcher.start()
 
     def stop(self):
-        self.loop.stop(pyev.EVBREAK_ALL)
         self.socket.close()
-        while self.watchers:
-            self.watchers.pop().stop()
+        self.watcher.stop()
         while self.connections:
             self.connections.pop().close()
         self.pool.close()
-

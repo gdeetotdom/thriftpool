@@ -29,8 +29,9 @@ cdef class SocketSource(BaseSocket):
     cdef ZMQSink sink
     cdef object on_close
     cdef object socket
+    cdef object address
 
-    cdef char[:] buffer
+    cdef unsigned char[:] buffer
     cdef object view
 
     cdef inline void resize(self, Py_ssize_t size)

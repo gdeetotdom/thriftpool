@@ -63,23 +63,22 @@ cdef class ZMQSink(BaseSocket):
         self.wait_writable()
 
     cpdef cb_io(self, object watcher, object revents):
-        if revents & EV_ERROR:
-            self.close()
-            return
         try:
             events = self.socket.getsockopt(EVENTS)
             if events & POLLOUT:
                 self.on_writable()
             if events & POLLIN:
                 self.on_readable()
-        except ZMQError, e:
-            if e.errno == EAGAIN:
+
+        except ZMQError, exc:
+            if exc.errno == EAGAIN:
                 return
             self.close()
-            logger.exception(e)
-        except:
+            logger.exception(exc)
+
+        except Exception, exc:
             self.close()
-            raise
+            logger.exception(exc)
 
     cdef on_readable(self):
         while self.is_readable():

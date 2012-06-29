@@ -23,4 +23,5 @@ cdef class StreamServer:
     cdef Context context
     cdef object loop
     cdef object socket
-    cdef object watchers
+    cdef object watcher
+    cdef object backlog

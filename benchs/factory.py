@@ -1,50 +1,23 @@
-import socket
 import zmq
-from socket_zmq.server import StreamServer
+from socket_zmq import ServerContainer
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.transport import TTransport
-from zmq.devices import ThreadDevice
 import logging
-import _socket
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 class Server(object):
 
-    def __init__(self, address, context, frontend, backend):
-        self.context = context
+    def __init__(self, address, frontend, backend):
         self.frontend = frontend
         self.backend = backend
-        self.socket = self.get_listener(address)
-        self.server = self.create_server()
-        self.device = self.create_device()
-
-    def create_server(self):
-        server = StreamServer(self.socket, self.context, self.frontend)
-        return server
-
-    def create_device(self):
-        device = ThreadDevice(zmq.QUEUE, zmq.ROUTER, zmq.DEALER)
-        device.context_factory = lambda: self.context
-        device.bind_in(self.frontend)
-        device.bind_out(self.backend)
-        return device
-
-    def get_listener(self, address, family=_socket.AF_INET):
-        """A shortcut to create a TCP socket, bind it and put it into listening state."""
-        sock = socket.socket(family=family)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(address)
-        sock.setblocking(0)
-        return sock
+        self.address = address
+        self.server = ServerContainer()
+        self.server.register(address, frontend, backend)
 
     def serve_forever(self):
-        self.device.start()
-        try:
-            self.server.start()
-        finally:
-            self.server.stop()
+        self.server.serve_forever()
 
 
 class Worker(object):
@@ -95,7 +68,7 @@ class Factory(object):
         super(Factory, self).__init__()
 
     def Server(self, listener):
-        server = Server(listener, self.context, self.frontend, self.backend)
+        server = Server(listener, self.frontend, self.backend)
 
         return server
 
