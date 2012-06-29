@@ -1,14 +1,17 @@
 cimport cython
-from logging import getLogger
+from cpython.array cimport array, resize_smart
+
+from socket_zmq.pool cimport SinkPool
+from socket_zmq.base cimport BaseSocket
+from socket_zmq.sink cimport ZMQSink
+
 from pyev import EV_READ, EV_WRITE, EV_ERROR
 from struct import Struct, calcsize, pack_into
 import _socket
 import errno
-from socket_zmq.server cimport SinkPool
-from socket_zmq.base cimport BaseSocket
-from socket_zmq.sink cimport ZMQSink
-from cpython.array cimport array, resize_smart
 from zmq.utils.buffers cimport frombuffer_2, PyBuffer_FromReadWriteObject
+
+from logging import getLogger
 
 logger = getLogger(__name__)
 
@@ -52,9 +55,9 @@ cdef class SocketSource(BaseSocket):
         BaseSocket.__init__(self, loop, self.socket.fileno())
 
     cdef inline void resize(self, Py_ssize_t size):
-        cdef array[unsigned char] a = <array[unsigned char]>self.buffer.base
+        cdef array[unsigned char] a = <array[unsigned char]> self.buffer
         resize_smart(a, size)
-        self.view = frombuffer_2(<unsigned char *>a._B, size, 0)
+        self.view = frombuffer_2(< unsigned char *> a._B, size, 0)
 
     cdef inline void resize_if_needed(self, Py_ssize_t size):
         if len(self.buffer) < size:
@@ -94,7 +97,7 @@ cdef class SocketSource(BaseSocket):
         assert received >= LENGTH_SIZE, "message length can't be read"
 
         message_length = self.struct.unpack_from(
-                                    <array[unsigned char]>self.buffer.base)[0]
+                                    <array[unsigned char]> self.buffer)[0]
 
         assert message_length > 0, "negative or empty frame size, it seems" \
                                    " client doesn't use FramedTransport"
@@ -159,11 +162,14 @@ cdef class SocketSource(BaseSocket):
         elif not self.sink.is_closed():
             # sink is not closed, close it
             self.sink.close()
-        self.sink = None
+        self.pool = self.sink = None
 
         # execute callback
         self.on_close(self)
         self.on_close = None
+
+        # remove objects
+        self.buffer = self.view = None
 
         BaseSocket.close(self)
 
@@ -192,7 +198,7 @@ cdef class SocketSource(BaseSocket):
             # resize buffer if needed
             self.resize_if_needed(self.len)
             # pack message size
-            self.struct.pack_into(<array[unsigned char]>self.buffer.base,
+            self.struct.pack_into(<array[unsigned char]> self.buffer,
                                   0, message_length)
             # copy message to buffer
             self.view[LENGTH_SIZE:self.len] = message

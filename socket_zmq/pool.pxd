@@ -14,14 +14,3 @@ cdef class SinkPool(object):
     cdef inline ZMQSink get(self)
     cdef inline put(self, ZMQSink sock)
     cpdef close(self)
-
-
-cdef class StreamServer:
-
-    cdef object connections
-    cdef SinkPool pool
-    cdef Context context
-    cdef object loop
-    cdef object socket
-    cdef object watcher
-    cdef object backlog

@@ -1,1 +1,1 @@
-from socket_zmq.container import ServerContainer
+from socket_zmq.app import App

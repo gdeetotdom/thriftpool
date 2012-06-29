@@ -1,5 +1,5 @@
 import zmq
-from socket_zmq import ServerContainer
+from socket_zmq import App
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.transport import TTransport
 import logging
@@ -13,11 +13,12 @@ class Server(object):
         self.frontend = frontend
         self.backend = backend
         self.address = address
-        self.server = ServerContainer()
-        self.server.register(address, frontend, backend)
+        self.app = App()
+        self.controller = self.app.controller
+        self.controller.register(self.app.ProxyComponent(address, frontend, backend))
 
     def serve_forever(self):
-        self.server.serve_forever()
+        self.controller.serve_forever()
 
 
 class Worker(object):

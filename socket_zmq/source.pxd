@@ -1,5 +1,5 @@
 from socket_zmq.base cimport BaseSocket
-from socket_zmq.server cimport SinkPool
+from socket_zmq.pool cimport SinkPool
 from socket_zmq.sink cimport ZMQSink
 from cpython cimport array
 
@@ -31,7 +31,7 @@ cdef class SocketSource(BaseSocket):
     cdef object socket
     cdef object address
 
-    cdef unsigned char[:] buffer
+    cdef object buffer
     cdef object view
 
     cdef inline void resize(self, Py_ssize_t size)
