@@ -1,7 +1,6 @@
 from socket_zmq.base cimport BaseSocket
 from socket_zmq.pool cimport SinkPool
 from socket_zmq.sink cimport ZMQSink
-from cpython cimport array
 
 
 cdef extern from "Python.h":
@@ -14,6 +13,16 @@ cdef enum States:
     WAIT_PROCESS = 2
     SEND_ANSWER = 3
     CLOSED = 4
+
+
+cdef class Buffer:
+
+    cdef void *handle
+    cdef int length
+    cdef object view
+
+    cdef resize(self, int size)
+    cdef slice(self, int offset, int size=*)
 
 
 cdef class SocketSource(BaseSocket):
@@ -31,11 +40,7 @@ cdef class SocketSource(BaseSocket):
     cdef object socket
     cdef object address
 
-    cdef object buffer
-    cdef object view
-
-    cdef inline void resize(self, Py_ssize_t size)
-    cdef inline void resize_if_needed(self, Py_ssize_t size)
+    cdef Buffer buffer
 
     cdef inline bint is_writeable(self)
     cdef inline bint is_readable(self)
