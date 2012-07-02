@@ -3,6 +3,7 @@ from socket_zmq import App
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.transport import TTransport
 import logging
+from struct import Struct
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -24,6 +25,7 @@ class Server(object):
 class Worker(object):
 
     def __init__(self, context, backend, processor):
+        self.struct = Struct('!?')
         self.context = context
         self.backend = backend
         self.in_protocol = TBinaryProtocolAcceleratedFactory()
@@ -45,8 +47,10 @@ class Worker(object):
             self.processor.process(iprot, oprot)
         except Exception, exc:
             logging.exception(exc)
+            socket.send(self.struct.pack(False), flags=zmq.SNDMORE)
             socket.send('')
         else:
+            socket.send(self.struct.pack(True), flags=zmq.SNDMORE)
             socket.send(otransport.getvalue())
 
     def run(self):

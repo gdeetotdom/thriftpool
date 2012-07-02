@@ -1,19 +1,24 @@
 cimport cython
-from pyev import EV_ERROR
-from cpython cimport bool
 from logging import getLogger
-from zmq.core.constants import NOBLOCK, EAGAIN, FD, EVENTS, POLLIN, POLLOUT
+from pyev import EV_ERROR
+from zmq.core.constants import (NOBLOCK, EAGAIN, FD, EVENTS, POLLIN, POLLOUT,
+    RCVMORE)
 from zmq.core.error import ZMQError
+from cpython cimport bool
 from zmq.core.socket cimport Socket
 from socket_zmq.base cimport BaseSocket
+from struct import Struct
 
 logger = getLogger(__name__)
+
+STATUS_FORMAT = '!?'
 
 
 cdef class ZMQSink(BaseSocket):
 
     def __init__(self, object loop, Socket socket):
-        self.request = self.callback = None
+        self.all_ok = self.response = self.request = self.callback = None
+        self.struct = Struct(STATUS_FORMAT)
         self.socket = socket
         self.status = WAIT_MESSAGE
         BaseSocket.__init__(self, loop, self.socket.getsockopt(FD))
@@ -24,7 +29,7 @@ cdef class ZMQSink(BaseSocket):
 
     @cython.profile(False)
     cdef inline bint is_readable(self):
-        return self.status == READ_REPLY
+        return self.status in (READ_REPLY, READ_STATUS)
 
     @cython.profile(False)
     cdef inline bint is_ready(self):
@@ -34,25 +39,31 @@ cdef class ZMQSink(BaseSocket):
     cdef inline bint is_closed(self):
         return self.status == CLOSED
 
+    cdef inline read_status(self):
+        assert self.is_readable(), 'sink not readable'
+        self.all_ok = self.struct.unpack(self.socket.recv(NOBLOCK & RCVMORE))
+        self.status = READ_REPLY
+
     cdef inline read(self):
         assert self.is_readable(), 'sink not readable'
-        assert self.callback is not None, 'callback is none'
-        self.callback(True, self.socket.recv(NOBLOCK))
-        self.callback = None
-        self.status = WAIT_MESSAGE
+        if self.status == READ_STATUS:
+            self.read_status()
+        else:
+            self.response = self.socket.recv(NOBLOCK)
+            self.status = WAIT_MESSAGE
 
     cdef inline write(self):
         assert self.is_writeable(), 'sink not writable'
-        assert self.request is not None, 'request is none'
         self.socket.send(self.request, NOBLOCK)
         self.request = None
-        self.status = READ_REPLY
+        self.status = READ_STATUS
 
     @cython.locals(ready=cython.bint)
     cpdef close(self):
         assert not self.is_closed(), 'sink already closed'
         self.status = CLOSED
         self.socket.close()
+        self.all_ok = self.response = self.request = self.callback = None
         BaseSocket.close(self)
 
     cpdef ready(self, object callback, object request):
@@ -83,6 +94,7 @@ cdef class ZMQSink(BaseSocket):
     cdef on_readable(self):
         while self.is_readable():
             self.read()
+        self.callback(self.all_ok, self.response)
 
     cdef on_writable(self):
         while self.is_writeable():

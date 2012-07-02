@@ -36,7 +36,7 @@ cdef class Buffer:
 
     cdef resize(self, int size):
         if self.length < size:
-            self.length = BUFFER_SIZE
+            self.length = size
             self.handle = realloc(self.handle, self.length * sizeof(unsigned char))
             self.view = frombuffer_2(self.handle, self.length, 0)
 
