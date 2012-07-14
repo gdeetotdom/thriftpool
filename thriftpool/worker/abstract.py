@@ -173,7 +173,7 @@ class Component(object):
 
     def create(self, parent):
         """Create the component."""
-        pass
+        raise NotImplementedError('subclass responsibility')
 
     def include_if(self, parent):
         """An optional predicate that decided whether this
