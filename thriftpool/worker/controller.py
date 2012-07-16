@@ -71,6 +71,8 @@ class Controller(object):
             logger.debug('Terminating from keyboard')
             self.stop()
 
+        # we can't simply execute Event.wait because signal processing will
+        # not work in this case
         while not self._shutdown_complete.is_set():
             self._shutdown_complete.wait(1e100)
 

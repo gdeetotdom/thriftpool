@@ -33,7 +33,7 @@ class Greenlet(object):
         return self.hub.greenlet.switch()
 
     def put(self, message):
-        self.hub.switch(message)
+        self.hub.greenlet.switch(message)
 
     def run(self):
         raise NotImplementedError()

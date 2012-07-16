@@ -31,6 +31,8 @@ class HubContainer(DaemonThread):
         self.endpoint = endpoint
         self.hub = self.Hub(self.endpoint)
         self.broker = self.hub.broker()
+        self.worker = self.hub.worker('ident')
+        self.client = self.hub.client('ident')
 
     def body(self):
         self.hub.start()

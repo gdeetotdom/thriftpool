@@ -63,4 +63,26 @@ class BaseWorker(Greenlet, Socket, JsonProtocol):
 
 
 class Worker(BaseWorker):
-    pass
+
+    def __init__(self, ident, handler):
+        self.handler = handler
+        super(Worker, self).__init__(ident)
+
+    def _handle_exception(self, exc):
+        return {'exc_type': exc.__class__, 'exc_state': exc.__dict__}
+
+    def _handle_result(self, result):
+        return {'result': result}
+
+    def run(self):
+        while True:
+            request = self.get()
+            try:
+                method = getattr(self.handler, request['method'])
+                args, kwargs = request.get('args', []), request.get('kwargs', {})
+                result = method(*args, **kwargs)
+                response = self._handle_result(result)
+            except Exception as exc:
+                logger.exception(exc)
+                response = self._handle_exception(exc)
+            self.put(response)

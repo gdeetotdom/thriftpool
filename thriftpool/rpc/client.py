@@ -70,4 +70,8 @@ class BaseClient(Greenlet, Socket, JsonProtocol):
 
 
 class Client(BaseClient):
-    pass
+
+    def run(self):
+        while True:
+            self.put()
+            print self.get()
