@@ -11,27 +11,24 @@ __all__ = ['Controller']
 
 logger = getLogger(__name__)
 
-RUNNING = 0x1
-CLOSED = 0x2
-TERMINATED = 0x3
-
 
 class Namespace(BaseNamespace):
     """This is the boot-step namespace of the :class:`Controller`."""
     name = 'worker'
 
     def modules(self):
-        return ['thriftpool.worker.broker',
-                'thriftpool.worker.pool']
+        return ['thriftpool.worker.hub',
+                'thriftpool.worker.broker',
+                'thriftpool.worker.sandbox']
 
 
 class Controller(object):
 
     app = None
 
-    RUNNING = RUNNING
-    CLOSED = CLOSED
-    TERMINATED = TERMINATED
+    RUNNING = 0x1
+    CLOSED = 0x2
+    TERMINATED = 0x3
 
     def __init__(self):
         self._running = 0
@@ -44,7 +41,7 @@ class Controller(object):
         callback()
 
     def register_signal_handler(self):
-        logger.debug('Register signal handlers')
+        self._debug('Register signal handlers')
         signals['SIGINT'] = partial(self._signal_handler, callback=self.stop)
         signals['SIGTERM'] = partial(self._signal_handler, callback=self.stop)
         signals['SIGQUIT'] = partial(self._signal_handler, callback=self.terminate)
@@ -56,20 +53,22 @@ class Controller(object):
 
         try:
             for component in self.components:
-                logger.debug('Starting %s...', qualname(component))
+                self._debug('Starting %s...', qualname(component))
                 if component is not None:
                     component.start()
                 self._running += 1
-                logger.debug('%s OK!', qualname(component))
+                self._debug('%s OK!', qualname(component))
         except SystemTerminate as exc:
-            logger.debug('Terminating server: %r', exc, exc_info=True)
+            self._debug('Terminating server: %r', exc, exc_info=True)
             self.terminate()
         except Exception as exc:
             logger.error('Unrecoverable error: %r', exc, exc_info=True)
             self.stop()
         except (KeyboardInterrupt, SystemExit):
-            logger.debug('Terminating from keyboard')
+            self._debug('Terminating from keyboard')
             self.stop()
+
+        logger.info('Server started!')
 
         # we can't simply execute Event.wait because signal processing will
         # not work in this case
@@ -91,7 +90,7 @@ class Controller(object):
         self._state = self.CLOSED
 
         for component in reversed(self.components):
-            logger.debug('%s %s...', what, qualname(component))
+            self._debug('%s %s...', what, qualname(component))
             if component:
                 stop = component.stop
                 if not warm:
@@ -110,3 +109,8 @@ class Controller(object):
         """Not so graceful shutdown of the worker server."""
         logger.info('Terminate server!')
         self._shutdown(warm=False)
+
+    def _debug(self, msg, *args, **kwargs):
+        return logger.debug("[%s] " + msg,
+                            *(self.__class__.__name__,) + args,
+                            **kwargs)

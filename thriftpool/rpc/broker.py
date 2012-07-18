@@ -1,4 +1,6 @@
-from .base import Socket, ClientCommands, WorkerCommands, EndpointType
+from .base import Base
+from thriftpool.utils.functional import cached_property
+from thriftpool.utils.socket import Socket
 import logging
 import zmq
 
@@ -38,29 +40,29 @@ class WorkerRepository(object):
         return worker
 
 
-class Broker(Socket):
-
-    hub = None
+class Broker(Base):
 
     def __init__(self):
         self.workers = WorkerRepository()
-        super(Broker, self).__init__(self.hub.loop, self.hub.ctx,
-                                     self.hub.endpoint, zmq.ROUTER)
+        super(Broker, self).__init__()
 
-    def start(self):
-        self.watcher.start()
-        self.socket.bind(self.endpoint)
+    @cached_property
+    def socket(self):
+        return Socket(self.app.hub, self.app.ctx, zmq.ROUTER)
 
-    def receive(self):
-        message = self.socket.recv_multipart(zmq.NOBLOCK)
+    def initialize(self):
+        self.socket.bind(self.app.config.BROKER_ENDPOINT)
+
+    def loop(self):
+        message = self.socket.recv_multipart()
         sender = message.pop(0)
         assert message.pop(0) == '', 'wait empty frame'
         header = message.pop(0)
 
-        if (header == EndpointType.CLIENT):
+        if (header == self.EndpointType.CLIENT):
             self.process_client(sender, message)
 
-        elif (header == EndpointType.WORKER):
+        elif (header == self.EndpointType.WORKER):
             self.process_worker(sender, message)
 
         else:
@@ -71,17 +73,17 @@ class Broker(Socket):
         assert len(message) >= 2, "require worker name and body"
 
         ident = message.pop(0)
-        assert message.pop(0) == ClientCommands.REQUEST, 'not request'
+        assert message.pop(0) == self.ClientCommands.REQUEST, 'not request'
 
         if ident in self.workers:
             worker = self.workers[ident]
             # Send request with return address of client
-            message = [worker.address, '', EndpointType.WORKER,
-                       WorkerCommands.REQUEST, sender, ''] + message
+            message = [worker.address, '', self.EndpointType.WORKER,
+                       self.WorkerCommands.REQUEST, sender, ''] + message
 
         else:
-            message = [sender, '', EndpointType.CLIENT, ident,
-                       ClientCommands.NOTFOUND] + message
+            message = [sender, '', self.EndpointType.CLIENT, ident,
+                       self.ClientCommands.NOTFOUND] + message
 
         self.socket.send_multipart(message)
 
@@ -93,13 +95,13 @@ class Broker(Socket):
         command = message.pop(0)
         ready = ident in self.workers
 
-        if command == WorkerCommands.READY:
+        if command == self.WorkerCommands.READY:
             if ready:
                 del self.workers[ident]
             else:
                 self.workers.register(ident, sender)
 
-        elif command == WorkerCommands.REPLY:
+        elif command == self.WorkerCommands.REPLY:
             assert ready, 'worker not ready'
 
             # Remove & save client return envelope and insert the
@@ -107,11 +109,11 @@ class Broker(Socket):
             client = message.pop(0)
             assert message.pop(0) == '', 'wait empty message'
 
-            message = [client, '', EndpointType.CLIENT, ident,
-                       ClientCommands.REPLY] + message
+            message = [client, '', self.EndpointType.CLIENT, ident,
+                       self.ClientCommands.REPLY] + message
             self.socket.send_multipart(message)
 
-        elif command == WorkerCommands.DISCONNECT:
+        elif command == self.WorkerCommands.DISCONNECT:
             del self.workers[ident]
 
         else:

@@ -1,45 +1,41 @@
-from greenlet import greenlet
 from struct import Struct
-from thriftpool.utils.functional import cached_property
-import logging
-import pyev
 import simplejson
-import zmq
+from thriftpool.utils.functional import cached_property
 
-logger = logging.getLogger(__name__)
 struct = Struct('!B')
 
 
-class Greenlet(object):
+class UnknownCommand(Exception):
+    pass
 
-    hub = None
 
-    @cached_property
-    def greenlet(self):
-        return greenlet(run=self.run)
+class WorkerNotFound(Exception):
+    pass
 
-    def start(self):
-        super(Greenlet, self).start()
-        self.greenlet.switch()
 
-    def switch(self, *args, **kwargs):
-        assert not self.greenlet.dead, 'greenlet is dead'
-        return self.greenlet.switch(*args, **kwargs)
+class EndpointType(object):
+    CLIENT = struct.pack(0x1)
+    WORKER = struct.pack(0x2)
 
-    def throw(self, typ, val, tb=None):
-        self.greenlet.throw(typ, val, tb)
 
-    def get(self):
-        return self.hub.greenlet.switch()
+class ClientCommands(object):
+    REQUEST = struct.pack(0x1)
+    REPLY = struct.pack(0x2)
+    NOTFOUND = struct.pack(0x3)
 
-    def put(self, message):
-        self.hub.greenlet.switch(message)
 
-    def run(self):
-        raise NotImplementedError()
+class WorkerCommands(object):
+    READY = struct.pack(0x1)
+    REQUEST = struct.pack(0x2)
+    REPLY = struct.pack(0x3)
+    DISCONNECT = struct.pack(0x4)
 
 
 class BaseProtocol(object):
+
+    EndpointType = EndpointType
+    ClientCommands = ClientCommands
+    WorkerCommands = WorkerCommands
 
     def decode(self, body):
         raise NotImplementedError()
@@ -62,77 +58,27 @@ class JsonProtocol(BaseProtocol):
         return self.encoder.encode(obj)
 
 
-class Watcher(object):
+class Base(JsonProtocol):
 
-    def __init__(self, loop, fileno):
-        self.loop = loop
-        self.watcher = pyev.Io(fileno, pyev.EV_READ, self.loop, self.on_readable)
-        super(Watcher, self).__init__()
+    app = None
 
-    def start(self):
-        self.watcher.start()
-
-    def on_readable(self, watcher, revents):
-        """Called when file descriptor become readable."""
-        raise NotImplementedError()
-
-    def close(self):
-        """Closes and unset watcher."""
-        self.watcher.stop()
-        self.watcher = None
-
-
-class Socket(Watcher):
-
-    def __init__(self, loop, ctx, endpoint, socket_type):
-        self.ctx = ctx
-        self.endpoint = endpoint
-        self.socket = self.ctx.socket(socket_type)
-        super(Socket, self).__init__(loop, self.socket.fd)
+    @cached_property
+    def greenlet(self):
+        return self.app.hub.Greenlet(run=self.run)
 
     def start(self):
-        super(Socket, self).start()
-        self.socket.connect(self.endpoint)
+        self.greenlet.start()
 
-    def can_receive(self):
-        return True
+    def run(self):
+        self.initialize()
+        while True:
+            self.loop()
 
-    def try_receive(self):
-        while self.can_receive():
-            try:
-                self.receive()
-            except zmq.ZMQError as exc:
-                if exc.errno == zmq.EAGAIN:
-                    break
-                raise
-
-    def on_readable(self, watcher, revents):
-        try:
-            self.try_receive()
-        except Exception as exc:
-            logger.exception(exc)
-
-    def receive(self):
+    def initialize(self):
         raise NotImplementedError()
 
-    def close(self):
-        self.socket.close()
-        super(Socket, self).close()
+    def loop(self):
+        raise NotImplementedError()
 
-
-class EndpointType(object):
-    CLIENT = struct.pack(0x1)
-    WORKER = struct.pack(0x2)
-
-
-class ClientCommands(object):
-    REQUEST = struct.pack(0x1)
-    REPLY = struct.pack(0x2)
-    NOTFOUND = struct.pack(0x3)
-
-
-class WorkerCommands(object):
-    READY = struct.pack(0x1)
-    REQUEST = struct.pack(0x2)
-    REPLY = struct.pack(0x3)
-    DISCONNECT = struct.pack(0x4)
+    def stop(self):
+        self.greenlet.kill()

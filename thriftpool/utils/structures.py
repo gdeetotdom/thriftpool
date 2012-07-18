@@ -9,11 +9,7 @@ This file was copied and adapted from celery.
 from __future__ import absolute_import
 from collections import defaultdict
 
-__all__ = ['CycleError', 'DependencyGraph']
-
-
-class CycleError(Exception):
-    """A cycle was detected in an acyclic graph."""
+__all__ = ['DependencyGraph', 'AttributeDict']
 
 
 class DependencyGraph(object):
@@ -190,3 +186,28 @@ class DependencyGraph(object):
                 output.append('     ' * level + d)
                 output.extend(self.repr_node(other, level + 1).split('\n')[1:])
         return '\n'.join(output)
+
+
+class AttributeDictMixin(object):
+    """Adds attribute access to mappings.
+
+    `d.key -> d[key]`
+
+    """
+
+    def __getattr__(self, k):
+        """`d.key -> d[key]`"""
+        try:
+            return self[k]
+        except KeyError:
+            raise AttributeError(
+                "'%s' object has no attribute '%s'" % (type(self).__name__, k))
+
+    def __setattr__(self, key, value):
+        """`d[key] = value -> d.key = value`"""
+        self[key] = value
+
+
+class AttributeDict(dict, AttributeDictMixin):
+    """Dict subclass with attribute access."""
+    pass
