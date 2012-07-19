@@ -149,7 +149,7 @@ class Waiter(object):
             self.value = value
             self._exception = None
         else:
-            assert getcurrent() is self.hub, "Can only use Waiter.switch" \
+            assert getcurrent() is self.hub._greenlet, "Can only use Waiter.switch" \
                 " method from the Hub greenlet"
             self.greenlet.switch(value)
 

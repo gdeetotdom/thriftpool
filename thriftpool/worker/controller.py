@@ -18,8 +18,7 @@ class Namespace(BaseNamespace):
 
     def modules(self):
         return ['thriftpool.worker.hub',
-                'thriftpool.worker.broker',
-                'thriftpool.worker.sandbox']
+                'thriftpool.worker.broker']
 
 
 class Controller(object):

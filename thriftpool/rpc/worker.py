@@ -24,6 +24,10 @@ class BaseWorker(Base):
         self.socket.connect(self.app.config.BROKER_ENDPOINT)
         self.send(self.WorkerCommands.READY)
 
+    def destruct(self):
+        self.send(self.WorkerCommands.DISCONNECT)
+        self.socket.close()
+
     def send(self, command, msg=None):
         """Send message to broker. If no message is provided, creates one
         internally.

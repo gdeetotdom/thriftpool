@@ -24,6 +24,7 @@ class WorkerRepository(object):
 
     def __delitem__(self, ident):
         """Delete the worker."""
+        logger.info("Deleting worker: %s", ident)
         del self.workers[ident]
 
     def __contains__(self, ident):
@@ -52,6 +53,9 @@ class Broker(Base):
 
     def initialize(self):
         self.socket.bind(self.app.config.BROKER_ENDPOINT)
+
+    def destruct(self):
+        self.socket.close()
 
     def loop(self):
         message = self.socket.recv_multipart()

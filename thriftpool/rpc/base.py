@@ -1,4 +1,5 @@
 from struct import Struct
+from greenlet import GreenletExit
 import simplejson
 from thriftpool.utils.functional import cached_property
 
@@ -46,16 +47,11 @@ class BaseProtocol(object):
 
 class JsonProtocol(BaseProtocol):
 
-    def __init__(self):
-        self.decoder = simplejson.JSONDecoder()
-        self.encoder = simplejson.JSONEncoder()
-        super(JsonProtocol, self).__init__()
-
     def decode(self, body):
-        return self.decoder.decode(body)
+        return simplejson.loads(body)
 
     def encode(self, obj):
-        return self.encoder.encode(obj)
+        return simplejson.dumps(obj)
 
 
 class Base(JsonProtocol):
@@ -71,14 +67,20 @@ class Base(JsonProtocol):
 
     def run(self):
         self.initialize()
-        while True:
-            self.loop()
+        try:
+            while True:
+                self.loop()
+        except GreenletExit:
+            self.destruct()
 
     def initialize(self):
         raise NotImplementedError()
 
     def loop(self):
         raise NotImplementedError()
+
+    def destruct(self):
+        pass
 
     def stop(self):
         self.greenlet.kill()

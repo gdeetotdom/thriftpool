@@ -22,12 +22,15 @@ class Client(JsonProtocol):
         socket.connect(self.app.config.BROKER_ENDPOINT)
         return socket
 
+    def close(self):
+        self.socket.close()
+
     def send(self, command, message):
         self.socket.send_multipart(self.message_prefix + \
                                     [command, self.encode(message)])
 
     def read_request(self):
-        message = self.socket.recv_multipart(zmq.NOBLOCK)
+        message = self.socket.recv_multipart()
 
         header = message.pop(0)
         assert header == self.EndpointType.CLIENT, 'wrong header'
@@ -47,4 +50,4 @@ class Client(JsonProtocol):
             raise UnknownCommand()
 
     def send_reply(self, result):
-        self.send(self.ClientCommands.REQUEST, self.encode(result))
+        self.send(self.ClientCommands.REQUEST, result)
