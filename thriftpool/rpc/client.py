@@ -9,9 +9,8 @@ logger = logging.getLogger(__name__)
 
 class Client(JsonProtocol):
 
-    app = None
-
-    def __init__(self, ident):
+    def __init__(self, app, ident):
+        self.app = app
         self.ident = ident
         self.message_prefix = [self.EndpointType.CLIENT, self.ident]
         super(Client, self).__init__()

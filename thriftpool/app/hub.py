@@ -9,6 +9,7 @@ from greenlet import greenlet, getcurrent, GreenletExit
 from thriftpool.utils.exceptions import set_exc_info
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
+from thriftpool.utils.threads import DaemonThread
 import pyev
 import sys
 
@@ -67,7 +68,6 @@ class Hub(SubclassMixin):
         self.loop.stop()
 
     def stop(self):
-        # we should run shutdown method in same thread as loop's thread
         self._async_stop.send()
 
     def switch(self):
@@ -92,6 +92,21 @@ class Hub(SubclassMixin):
         watcher.start(callback, *args, **kwargs)
         watcher.send()
         return watcher
+
+
+class HubThread(DaemonThread):
+    """Thread to run hub."""
+
+    def __init__(self, hub):
+        super(HubThread, self).__init__()
+        self.hub = hub
+
+    def body(self):
+        self.hub.start()
+
+    def stop(self):
+        self.hub.stop()
+        super(HubThread, self).stop()
 
 
 class Waiter(object):

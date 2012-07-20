@@ -9,12 +9,10 @@ logger = logging.getLogger(__name__)
 
 class BaseWorker(Base):
 
-    app = None
-
-    def __init__(self, ident):
+    def __init__(self, app, ident):
         self.ident = ident
         self.reply_to = None
-        super(BaseWorker, self).__init__()
+        super(BaseWorker, self).__init__(app)
 
     @cached_property
     def socket(self):
@@ -65,9 +63,9 @@ class BaseWorker(Base):
 
 class Worker(BaseWorker):
 
-    def __init__(self, ident, handler):
+    def __init__(self, app, ident, handler):
         self.handler = handler
-        super(Worker, self).__init__(ident)
+        super(Worker, self).__init__(app, ident)
 
     def loop(self):
         request = self.read_request()

@@ -25,7 +25,10 @@ class WorkerRepository(object):
     def __delitem__(self, ident):
         """Delete the worker."""
         logger.info("Deleting worker: %s", ident)
-        del self.workers[ident]
+        try:
+            del self.workers[ident]
+        except KeyError:
+            pass
 
     def __contains__(self, ident):
         """Check if worker's address already exists."""
@@ -43,9 +46,9 @@ class WorkerRepository(object):
 
 class Broker(Base):
 
-    def __init__(self):
+    def __init__(self, app):
         self.workers = WorkerRepository()
-        super(Broker, self).__init__()
+        super(Broker, self).__init__(app)
 
     @cached_property
     def socket(self):

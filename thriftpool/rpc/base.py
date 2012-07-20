@@ -56,7 +56,9 @@ class JsonProtocol(BaseProtocol):
 
 class Base(JsonProtocol):
 
-    app = None
+    def __init__(self, app):
+        self.app = app
+        super(Base, self).__init__()
 
     @cached_property
     def greenlet(self):

@@ -1,24 +1,23 @@
+# -*- coding: utf-8 -*-
+"""Implements controllers.
+
+This file was copied and adapted from celery.
+
+:copyright: (c) 2009 - 2012 by Ask Solem.
+:license: BSD, see LICENSE for more details.
+
+"""
 from __future__ import absolute_import
 from functools import partial
 from logging import getLogger
 from threading import Event
+from thriftpool.components.base import Namespace
 from thriftpool.exceptions import SystemTerminate
+from thriftpool.utils.finalize import Finalize
 from thriftpool.utils.imports import qualname
 from thriftpool.utils.signals import signals
-from thriftpool.worker.abstract import Namespace as BaseNamespace
-
-__all__ = ['Controller']
 
 logger = getLogger(__name__)
-
-
-class Namespace(BaseNamespace):
-    """This is the boot-step namespace of the :class:`Controller`."""
-    name = 'worker'
-
-    def modules(self):
-        return ['thriftpool.worker.hub',
-                'thriftpool.worker.broker']
 
 
 class Controller(object):
@@ -29,12 +28,15 @@ class Controller(object):
     CLOSED = 0x2
     TERMINATED = 0x3
 
+    Namespace = Namespace
+
     def __init__(self):
         self._running = 0
         self._state = None
         self._shutdown_complete = Event()
+        self._finalize = Finalize(self, self.stop, exitpriority=1)
         self.components = []
-        self.namespace = Namespace(app=self.app).apply(self)
+        self.namespace = self.Namespace(app=self.app).apply(self)
 
     def _signal_handler(self, signum, frame, callback):
         callback()

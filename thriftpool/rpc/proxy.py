@@ -1,12 +1,11 @@
+from thriftpool.rpc.client import Client
 
 
 class Proxy(object):
     """Proxy handler."""
 
-    app = None
-
-    def __init__(self, ident):
-        self.__client = self.app.Client(ident)
+    def __init__(self, app, ident):
+        self.__client = Client(app, ident)
 
     def __getattr__(self, name):
         client = self.__client
