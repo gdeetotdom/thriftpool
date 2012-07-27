@@ -1,5 +1,8 @@
 from __future__ import absolute_import
 from threading import Thread, Event
+import os
+import sys
+import traceback
 
 __all__ = ['DaemonThread']
 
@@ -18,6 +21,11 @@ class DaemonThread(Thread):
     def run(self):
         try:
             self.body()
+        except Exception as exc:
+            try:
+                self.on_crash('{0!r} crashed: {1!r}', self.name, exc)
+            finally:
+                os._exit(1)  # exiting by normal means won't work
         finally:
             self._set_stopped()
 
@@ -34,3 +42,12 @@ class DaemonThread(Thread):
         self._is_stopped.wait()
         if self.is_alive():
             self.join(1e100)
+
+    def on_crash(self, msg, *fmt):
+        sys.stderr.write(msg.format(*fmt) + '\n')
+        exc_info = sys.exc_info()
+        try:
+            traceback.print_exception(exc_info[0], exc_info[1], exc_info[2],
+                                      None, sys.stderr)
+        finally:
+            del(exc_info)

@@ -1,4 +1,4 @@
-from .base import JsonProtocol, UnknownCommand, WorkerNotFound
+from .base import Protocol, UnknownCommand, WorkerNotFound
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.socket import Socket
 import logging
@@ -7,10 +7,11 @@ import zmq
 logger = logging.getLogger(__name__)
 
 
-class Client(JsonProtocol):
+class Client(Protocol):
 
-    def __init__(self, app, ident):
-        self.app = app
+    app = None
+
+    def __init__(self, ident):
         self.ident = ident
         self.message_prefix = [self.EndpointType.CLIENT, self.ident]
         super(Client, self).__init__()
@@ -50,3 +51,29 @@ class Client(JsonProtocol):
 
     def send_reply(self, result):
         self.send(self.ClientCommands.REQUEST, result)
+
+
+class Proxy(object):
+    """Proxy handler."""
+
+    app = None
+
+    def __init__(self, ident):
+        self.__client = self.app.RemoteClient(ident)
+
+    def __getattr__(self, name):
+        client = self.__client
+
+        def inner(*args, **kwargs):
+            request = {'method': name, 'args': args, 'kwargs': kwargs}
+            client.send_reply(request)
+            response = client.read_request()
+            if 'result' in response:
+                return response['result']
+            elif 'exc' in response:
+                raise response['exc']
+            else:
+                raise AssertionError('Wrong response')
+
+        inner.__name__ = name
+        return inner

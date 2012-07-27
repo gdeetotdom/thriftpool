@@ -42,9 +42,17 @@ class ThriftPool(SubclassMixin):
         return self.Orchestrator()
 
     @cached_property
-    def Container(self):
-        return self.subclass_with_self('thriftpool.controllers.container:Container')
+    def RemoteBroker(self):
+        return self.subclass_with_self('thriftpool.rpc.broker:Broker')
 
     @cached_property
-    def container(self):
-        return self.Container()
+    def RemoteWorker(self):
+        return self.subclass_with_self('thriftpool.rpc.worker:Worker')
+
+    @cached_property
+    def RemoteClient(self):
+        return self.subclass_with_self('thriftpool.rpc.client:Client')
+
+    @cached_property
+    def RemoteProxy(self):
+        return self.subclass_with_self('thriftpool.rpc.client:Proxy')

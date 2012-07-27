@@ -63,9 +63,9 @@ class BaseWorker(Base):
 
 class Worker(BaseWorker):
 
-    def __init__(self, app, ident, handler):
+    def __init__(self, ident, handler):
         self.handler = handler
-        super(Worker, self).__init__(app, ident)
+        super(Worker, self).__init__(ident)
 
     def loop(self):
         request = self.read_request()
@@ -77,6 +77,6 @@ class Worker(BaseWorker):
             response = {'result': result}
         except Exception as exc:
             logger.exception(exc)
-            response = {'exc_type': exc.__class__, 'exc_state': exc.__dict__}
+            response = {'exc': exc}
 
         self.send_reply(response)

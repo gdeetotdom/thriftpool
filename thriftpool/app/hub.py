@@ -7,6 +7,7 @@ This file was copied and adapted from gevent.
 from functools import partial
 from greenlet import greenlet, getcurrent, GreenletExit
 from thriftpool.utils.exceptions import set_exc_info
+from thriftpool.utils.finalize import Finalize
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
 from thriftpool.utils.threads import DaemonThread
@@ -25,6 +26,8 @@ class Hub(SubclassMixin):
         self.loop = pyev.Loop(debug=True)
         self._async_stop = self.loop.async(self._shutdown)
         self._async_stop.start()
+        self._finalizer = Finalize(self, self.stop)
+        HubThread(self).start()
         super(Hub, self).__init__()
 
     @cached_property
@@ -58,6 +61,13 @@ class Hub(SubclassMixin):
     def async(self):
         return self.subclass_with_self(AsyncWatcher, attribute='hub')
 
+    def callback(self, callback, *args, **kwargs):
+        """Run given function in loop."""
+        watcher = self.async()
+        watcher.start(callback, *args, **kwargs)
+        watcher.send()
+        return watcher
+
     def start(self):
         self._greenlet.switch()
 
@@ -85,13 +95,6 @@ class Hub(SubclassMixin):
     def switch_out(self):
         """Method to prevent loops."""
         raise RuntimeError('Impossible to call blocking function in the event loop callback')
-
-    def run_in_loop(self, callback, *args, **kwargs):
-        """Run given function in loop."""
-        watcher = self.async()
-        watcher.start(callback, *args, **kwargs)
-        watcher.send()
-        return watcher
 
 
 class HubThread(DaemonThread):
@@ -247,18 +250,25 @@ class AsyncWatcher(BaseWatcher):
         self.watcher.send()
 
 
-class Greenlet(greenlet):
+class Greenlet(object):
     """A light-weight cooperatively-scheduled execution unit."""
 
     hub = None
 
-    def __init__(self, run=None, *args, **kwargs):
-        greenlet.__init__(self, parent=self.hub._greenlet)
-        if run is not None:
-            self._run = run
-        self.args = args
-        self.kwargs = kwargs
+    def __init__(self, run, *args, **kwargs):
+        self._run = run
+        self._args = args
+        self._kwargs = kwargs
         self._start_watcher = None
+
+    @cached_property
+    def _greenlet(self):
+        return greenlet(run=self.run,
+                        parent=self.hub._greenlet)
+
+    @property
+    def dead(self):
+        return self._greenlet.dead
 
     def start(self):
         """Schedule the greenlet to run in this loop iteration"""
@@ -271,16 +281,22 @@ class Greenlet(greenlet):
         try:
             if self._start_watcher is not None:
                 self._start_watcher.stop()
-            self._run(*self.args, **self.kwargs)
+            self._run(*self._args, **self._kwargs)
         finally:
             self.__dict__.pop('_run', None)
-            self.__dict__.pop('args', None)
-            self.__dict__.pop('kwargs', None)
+            self.__dict__.pop('_args', None)
+            self.__dict__.pop('_kwargs', None)
 
     def kill(self, exception=GreenletExit):
         """Raise the exception in the greenlet."""
         if not self.dead:
-            self.hub.run_in_loop(lambda: self.throw(exception))
+            self.hub.callback(lambda: self.throw(exception))
+
+    def switch(self, *args, **kwargs):
+        return self._greenlet.switch(*args, **kwargs)
+
+    def throw(self, *args, **kwargs):
+        return self._greenlet.throw(*args, **kwargs)
 
 
 class _NONE(object):

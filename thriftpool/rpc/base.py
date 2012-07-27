@@ -1,7 +1,11 @@
-from struct import Struct
 from greenlet import GreenletExit
-import simplejson
+from struct import Struct
 from thriftpool.utils.functional import cached_property
+
+try:
+    from cPickle import loads, dumps
+except ImportError:
+    from pickle import loads, dumps
 
 struct = Struct('!B')
 
@@ -15,50 +19,42 @@ class WorkerNotFound(Exception):
 
 
 class EndpointType(object):
+
     CLIENT = struct.pack(0x1)
     WORKER = struct.pack(0x2)
 
 
 class ClientCommands(object):
+
     REQUEST = struct.pack(0x1)
     REPLY = struct.pack(0x2)
     NOTFOUND = struct.pack(0x3)
 
 
 class WorkerCommands(object):
+
     READY = struct.pack(0x1)
     REQUEST = struct.pack(0x2)
     REPLY = struct.pack(0x3)
     DISCONNECT = struct.pack(0x4)
 
 
-class BaseProtocol(object):
+class Protocol(object):
 
     EndpointType = EndpointType
     ClientCommands = ClientCommands
     WorkerCommands = WorkerCommands
 
     def decode(self, body):
-        raise NotImplementedError()
+        return loads(body)
 
     def encode(self, obj):
-        raise NotImplementedError()
+        return dumps(obj)
 
 
-class JsonProtocol(BaseProtocol):
+class Base(Protocol):
 
-    def decode(self, body):
-        return simplejson.loads(body)
-
-    def encode(self, obj):
-        return simplejson.dumps(obj)
-
-
-class Base(JsonProtocol):
-
-    def __init__(self, app):
-        self.app = app
-        super(Base, self).__init__()
+    app = None
 
     @cached_property
     def greenlet(self):

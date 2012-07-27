@@ -46,9 +46,9 @@ class WorkerRepository(object):
 
 class Broker(Base):
 
-    def __init__(self, app):
+    def __init__(self):
         self.workers = WorkerRepository()
-        super(Broker, self).__init__(app)
+        super(Broker, self).__init__()
 
     @cached_property
     def socket(self):

@@ -11,9 +11,9 @@ class Namespace(BaseNamespace):
     name = 'orchestrator'
 
     def modules(self):
-        return ['thriftpool.components.hub',
-                'thriftpool.components.broker',
-                'thriftpool.components.pool']
+        return ['thriftpool.components.broker',
+                'thriftpool.components.pool',
+                'thriftpool.components.supervisor']
 
 
 class Orchestrator(Controller):
