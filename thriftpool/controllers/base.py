@@ -15,12 +15,13 @@ from thriftpool.components.base import Namespace
 from thriftpool.exceptions import SystemTerminate
 from thriftpool.utils.finalize import Finalize
 from thriftpool.utils.imports import qualname
+from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.signals import signals
 
 logger = getLogger(__name__)
 
 
-class Controller(object):
+class Controller(LogsMixin):
 
     app = None
 
@@ -63,13 +64,13 @@ class Controller(object):
             self._debug('Terminating server: %r', exc, exc_info=True)
             self.terminate()
         except Exception as exc:
-            logger.error('Unrecoverable error: %r', exc, exc_info=True)
+            self._error('Unrecoverable error: %r', exc, exc_info=True)
             self.stop()
         except (KeyboardInterrupt, SystemExit):
             self._debug('Terminating from keyboard')
             self.stop()
 
-        logger.info('Server started!')
+        self._info('Server started!')
 
         # we can't simply execute Event.wait because signal processing will
         # not work in this case
@@ -103,15 +104,10 @@ class Controller(object):
 
     def stop(self):
         """Graceful shutdown of the worker server."""
-        logger.info('Stop server!')
+        self._info('Stop server!')
         self._shutdown(warm=True)
 
     def terminate(self):
         """Not so graceful shutdown of the worker server."""
-        logger.info('Terminate server!')
+        self._info('Terminate server!')
         self._shutdown(warm=False)
-
-    def _debug(self, msg, *args, **kwargs):
-        return logger.debug("[%s] " + msg,
-                            *(self.__class__.__name__,) + args,
-                            **kwargs)

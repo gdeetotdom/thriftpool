@@ -49,4 +49,5 @@ class Supervisor(DaemonThread):
 
         except RestartFreqExceeded:
             pool.close()
+            pool.join()
             raise

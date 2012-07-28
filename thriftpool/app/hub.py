@@ -6,6 +6,7 @@ This file was copied and adapted from gevent.
 """
 from functools import partial
 from greenlet import greenlet, getcurrent, GreenletExit
+from threading import Event
 from thriftpool.utils.exceptions import set_exc_info
 from thriftpool.utils.finalize import Finalize
 from thriftpool.utils.functional import cached_property
@@ -24,6 +25,7 @@ class Hub(SubclassMixin):
 
     def __init__(self):
         self.loop = pyev.Loop(debug=True)
+        self._shutdown_complete = Event()
         self._async_stop = self.loop.async(self._shutdown)
         self._async_stop.start()
         self._finalizer = Finalize(self, self.stop)
@@ -72,7 +74,9 @@ class Hub(SubclassMixin):
         self._greenlet.switch()
 
     def run(self):
+        """Run event loop. Trigger event when exit."""
         self.loop.start()
+        self._shutdown_complete.set()
 
     def _shutdown(self, watcher, revents):
         self.loop.stop()
@@ -95,6 +99,10 @@ class Hub(SubclassMixin):
     def switch_out(self):
         """Method to prevent loops."""
         raise RuntimeError('Impossible to call blocking function in the event loop callback')
+
+    def wait_shutdown(self):
+        """Wait until event loop will exit."""
+        self._shutdown_complete.wait()
 
 
 class HubThread(DaemonThread):

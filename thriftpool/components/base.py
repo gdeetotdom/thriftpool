@@ -12,12 +12,13 @@ from collections import defaultdict
 from importlib import import_module
 from logging import getLogger
 from thriftpool.utils.imports import instantiate
+from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.structures import DependencyGraph
 
 logger = getLogger(__name__)
 
 
-class Namespace(object):
+class Namespace(LogsMixin):
     """A namespace containing components.
 
     Every component must belong to a namespace.
@@ -102,10 +103,6 @@ class Namespace(object):
 
     def _claim(self):
         return self._unclaimed[self.name]
-
-    def _debug(self, msg, *args):
-        return logger.debug("[%s] " + msg,
-                            *(self.name.capitalize(),) + args)
 
 
 class ComponentType(type):

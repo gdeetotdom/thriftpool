@@ -1,5 +1,6 @@
 from .base import Base
 from thriftpool.utils.functional import cached_property
+from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.socket import Socket
 import logging
 import zmq
@@ -13,7 +14,9 @@ class WorkerEntity(object):
         self.address = address
 
 
-class WorkerRepository(object):
+class WorkerRepository(LogsMixin):
+
+    Entity = WorkerEntity
 
     def __init__(self):
         self.workers = {}
@@ -24,7 +27,7 @@ class WorkerRepository(object):
 
     def __delitem__(self, ident):
         """Delete the worker."""
-        logger.info("Deleting worker: %s", ident)
+        self._info("Deleting worker: %s", ident)
         try:
             del self.workers[ident]
         except KeyError:
@@ -39,12 +42,12 @@ class WorkerRepository(object):
         try:
             worker = self.workers[ident]
         except KeyError:
-            logger.info("Registering new worker: %s", ident)
-            worker = self.workers[ident] = WorkerEntity(address)
+            self._info("Registering new worker: %s", ident)
+            worker = self.workers[ident] = self.Entity(address)
         return worker
 
 
-class Broker(Base):
+class Broker(Base, LogsMixin):
 
     def __init__(self):
         self.workers = WorkerRepository()
@@ -73,7 +76,7 @@ class Broker(Base):
             self.process_worker(sender, message)
 
         else:
-            logger.error('Invalid message')
+            self._error('Invalid message')
 
     def process_client(self, sender, message):
         """Process request coming from client."""
@@ -124,4 +127,4 @@ class Broker(Base):
             del self.workers[ident]
 
         else:
-            logger.error('Invalid message')
+            self._error('Invalid message')
