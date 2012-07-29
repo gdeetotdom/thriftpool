@@ -8,7 +8,6 @@ from functools import partial
 from greenlet import greenlet, getcurrent, GreenletExit
 from threading import Event
 from thriftpool.utils.exceptions import set_exc_info
-from thriftpool.utils.finalize import Finalize
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
 from thriftpool.utils.threads import DaemonThread
@@ -28,17 +27,12 @@ class Hub(SubclassMixin):
         self._shutdown_complete = Event()
         self._async_stop = self.loop.async(self._shutdown)
         self._async_stop.start()
-        self._finalizer = Finalize(self, self.stop)
         HubThread(self).start()
         super(Hub, self).__init__()
 
     @cached_property
     def _greenlet(self):
         return greenlet(run=self.run)
-
-    @cached_property
-    def Greenlet(self):
-        return self.subclass_with_self(Greenlet, attribute='hub')
 
     @cached_property
     def Waiter(self):
@@ -56,16 +50,20 @@ class Hub(SubclassMixin):
             watcher.stop()
 
     @cached_property
-    def io(self):
+    def Greenlet(self):
+        return self.subclass_with_self(Greenlet, attribute='hub')
+
+    @cached_property
+    def IO(self):
         return self.subclass_with_self(IOWatcher, attribute='hub')
 
     @cached_property
-    def async(self):
+    def Async(self):
         return self.subclass_with_self(AsyncWatcher, attribute='hub')
 
     def callback(self, callback, *args, **kwargs):
-        """Run given function in loop."""
-        watcher = self.async()
+        """Run given function in main loop."""
+        watcher = self.Async()
         watcher.start(callback, *args, **kwargs)
         watcher.send()
         return watcher
@@ -79,30 +77,22 @@ class Hub(SubclassMixin):
         self._shutdown_complete.set()
 
     def _shutdown(self, watcher, revents):
-        self.loop.stop()
+        self.loop.stop(pyev.EVBREAK_ALL)
 
     def stop(self):
         self._async_stop.send()
+        self._shutdown_complete.wait()
 
     def switch(self):
         """Return to main loop. Save exception information before."""
         exc_type, exc_value = sys.exc_info()[:2]
         try:
-            switch_out = getattr(getcurrent(), 'switch_out', None)
-            if switch_out is not None:
-                switch_out()
+            if getcurrent() is self._greenlet:
+                raise RuntimeError('Impossible to call blocking function in the event loop callback')
             sys.exc_clear()
             return self._greenlet.switch()
         finally:
             set_exc_info(exc_type, exc_value)
-
-    def switch_out(self):
-        """Method to prevent loops."""
-        raise RuntimeError('Impossible to call blocking function in the event loop callback')
-
-    def wait_shutdown(self):
-        """Wait until event loop will exit."""
-        self._shutdown_complete.wait()
 
 
 class HubThread(DaemonThread):
@@ -281,7 +271,7 @@ class Greenlet(object):
     def start(self):
         """Schedule the greenlet to run in this loop iteration"""
         if self._start_watcher is None:
-            self._start_watcher = self.hub.async()
+            self._start_watcher = self.hub.Async()
             self._start_watcher.start(self.switch)
             self._start_watcher.send()
 

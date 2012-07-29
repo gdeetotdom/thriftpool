@@ -1,4 +1,6 @@
 from .base import Base
+from collections import namedtuple
+from thriftpool.utils.dispatcher import Signal
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.socket import Socket
@@ -8,18 +10,23 @@ import zmq
 logger = logging.getLogger(__name__)
 
 
-class WorkerEntity(object):
-
-    def __init__(self, address):
-        self.address = address
+class WorkerEntity(namedtuple('WorkerEntity', 'address')):
+    """Some information about registered worker."""
 
 
 class WorkerRepository(LogsMixin):
+    """Contains all registered workers. Provide methods to work with this set.
+
+    """
 
     Entity = WorkerEntity
 
-    def __init__(self):
+    def __init__(self, hub, worker_registred, worker_deleted):
         self.workers = {}
+        self.hub = hub
+        self.worker_registred = worker_registred
+        self.worker_deleted = worker_deleted
+        super(WorkerRepository, self).__init__()
 
     def __getitem__(self, ident):
         """Get the worker."""
@@ -30,6 +37,7 @@ class WorkerRepository(LogsMixin):
         self._info("Deleting worker: %s", ident)
         try:
             del self.workers[ident]
+            self.hub.Greenlet(self.worker_deleted.send, sender=self, ident=ident).start()
         except KeyError:
             pass
 
@@ -44,13 +52,25 @@ class WorkerRepository(LogsMixin):
         except KeyError:
             self._info("Registering new worker: %s", ident)
             worker = self.workers[ident] = self.Entity(address)
+            self.hub.Greenlet(self.worker_registred.send, sender=self, ident=ident).start()
         return worker
 
 
 class Broker(Base, LogsMixin):
+    """Pass messages between workers and clients. Messages routed by worker
+    identification.
+
+    """
 
     def __init__(self):
-        self.workers = WorkerRepository()
+        # called when registered worker was deleted.
+        self.worker_deleted = Signal()
+        # called when new worker registered.
+        self.worker_registred = Signal()
+        # create new repository
+        self.repo = WorkerRepository(self.app.hub,
+                                     self.worker_registred,
+                                     self.worker_deleted)
         super(Broker, self).__init__()
 
     @cached_property
@@ -85,8 +105,8 @@ class Broker(Base, LogsMixin):
         ident = message.pop(0)
         assert message.pop(0) == self.ClientCommands.REQUEST, 'not request'
 
-        if ident in self.workers:
-            worker = self.workers[ident]
+        if ident in self.repo:
+            worker = self.repo[ident]
             # Send request with return address of client
             message = [worker.address, '', self.EndpointType.WORKER,
                        self.WorkerCommands.REQUEST, sender, ''] + message
@@ -103,13 +123,13 @@ class Broker(Base, LogsMixin):
 
         ident = message.pop(0)
         command = message.pop(0)
-        ready = ident in self.workers
+        ready = ident in self.repo
 
         if command == self.WorkerCommands.READY:
             if ready:
-                del self.workers[ident]
+                del self.repo[ident]
             else:
-                self.workers.register(ident, sender)
+                self.repo.register(ident, sender)
 
         elif command == self.WorkerCommands.REPLY:
             assert ready, 'worker not ready'
@@ -124,7 +144,7 @@ class Broker(Base, LogsMixin):
             self.socket.send_multipart(message)
 
         elif command == self.WorkerCommands.DISCONNECT:
-            del self.workers[ident]
+            del self.repo[ident]
 
         else:
             self._error('Invalid message')

@@ -29,7 +29,7 @@ class Client(Protocol):
         self.socket.send_multipart(self.message_prefix + \
                                     [command, self.encode(message)])
 
-    def read_request(self):
+    def read_reply(self):
         message = self.socket.recv_multipart()
 
         header = message.pop(0)
@@ -49,7 +49,7 @@ class Client(Protocol):
         else:
             raise UnknownCommand()
 
-    def send_reply(self, result):
+    def send_request(self, result):
         self.send(self.ClientCommands.REQUEST, result)
 
 
@@ -66,8 +66,8 @@ class Proxy(object):
 
         def inner(*args, **kwargs):
             request = {'method': name, 'args': args, 'kwargs': kwargs}
-            client.send_reply(request)
-            response = client.read_request()
+            client.send_request(request)
+            response = client.read_reply()
             if 'result' in response:
                 return response['result']
             elif 'exc' in response:

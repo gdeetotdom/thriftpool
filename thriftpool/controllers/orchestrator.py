@@ -13,7 +13,8 @@ class Namespace(BaseNamespace):
     def modules(self):
         return ['thriftpool.components.broker',
                 'thriftpool.components.pool',
-                'thriftpool.components.supervisor']
+                'thriftpool.components.supervisor',
+                'thriftpool.components.mediator']
 
 
 class Orchestrator(Controller):

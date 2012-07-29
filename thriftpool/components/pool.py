@@ -74,7 +74,6 @@ class Worker(Process):
 
         # stop hub and wait until it will exit
         self.app.hub.stop()
-        self.app.hub.wait_shutdown()
 
 
 class Pool(object):

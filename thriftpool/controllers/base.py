@@ -99,6 +99,9 @@ class Controller(LogsMixin):
                     stop = getattr(component, 'terminate', None) or stop
                 stop()
 
+        # stop hub thread
+        self.app.hub.stop()
+
         self._state = self.TERMINATED
         self._shutdown_complete.set()
 

@@ -16,7 +16,7 @@ class Socket(object):
     def __setup_events(self):
         self.__writable = self._hub.Waiter()
         self.__readable = self._hub.Waiter()
-        self.__watcher = self._hub.io(self.fileno, pyev.EV_READ)
+        self.__watcher = self._hub.IO(self.fileno, pyev.EV_READ)
         self.__watcher.start(self.__state_changed)
 
     def __state_changed(self):
