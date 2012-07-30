@@ -8,7 +8,6 @@ This file was copied and adapted from celery.
 
 """
 from __future__ import absolute_import
-from functools import partial
 from logging import getLogger
 from threading import Event
 from thriftpool.components.base import Namespace
@@ -44,9 +43,9 @@ class Controller(LogsMixin):
 
     def register_signal_handler(self):
         self._debug('Register signal handlers')
-        signals['SIGINT'] = partial(self._signal_handler, callback=self.stop)
-        signals['SIGTERM'] = partial(self._signal_handler, callback=self.stop)
-        signals['SIGQUIT'] = partial(self._signal_handler, callback=self.terminate)
+        signals['SIGINT'] = lambda signum, frame: self.stop()
+        signals['SIGTERM'] = lambda signum, frame: self.stop()
+        signals['SIGQUIT'] = lambda signum, frame: self.terminate()
 
     def start(self):
         self._state = self.RUNNING

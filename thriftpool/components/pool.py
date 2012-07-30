@@ -5,10 +5,9 @@ from billiard.pool import LaxBoundedSemaphore, EX_OK, WorkersJoined
 from logging import getLogger
 from threading import Event
 from thriftpool.components.base import StartStopComponent
-from thriftpool.utils.functional import cached_property
+from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.signals import signals
 import uuid
-from thriftpool.utils.logs import LogsMixin
 
 logger = getLogger(__name__)
 
@@ -23,16 +22,24 @@ class PoolComponent(StartStopComponent):
         return pool
 
 
-class WorkerController(LogsMixin):
+class Worker(LogsMixin):
 
-    def __init__(self, app):
+    def __init__(self, app, container):
         self._shutdown_complete = Event()
-        self.app = app
         self.ident = uuid.uuid4().hex
-        self.remote_worker = self.app.RemoteWorker(self.ident, self)
+        self.app = app
+        self.container = container
+        self.remote_worker = self.app.RemoteWorker(self.ident, self.container)
+
+    def register_signal_handler(self):
+        signals['SIGINT'] = lambda signum, frame: self.stop()
+        signals['SIGTERM'] = lambda signum, frame: self.stop()
 
     def run(self):
         self._debug('Starting worker "%s".', self.ident)
+
+        # wait for termination signal
+        self.register_signal_handler()
 
         # start remote worker
         self.remote_worker.start()
@@ -41,59 +48,33 @@ class WorkerController(LogsMixin):
         while not self._shutdown_complete.is_set():
             self._shutdown_complete.wait(1e100)
 
-        # stop remote worker
+        # stop remote worker and wait until it will exit
         self.remote_worker.stop()
+
+        # stop hub and wait until it will exit
+        self.app.hub.stop()
 
     def stop(self):
         self._debug('Stopping worker "%s".', self.ident)
         self._shutdown_complete.set()
 
-    def ping(self):
-        return 'pong'
-
-
-class Worker(Process):
-
-    def __init__(self, app):
-        self.app = app
-        super(Worker, self).__init__()
-
-    @cached_property
-    def controller(self):
-        return WorkerController(self.app)
-
-    def register_signal_handler(self):
-        signals['SIGTERM'] = lambda signum, frame: self.controller.stop()
-
-    def run(self):
-        # wait for termination signal
-        self.register_signal_handler()
-
-        # start controller
-        self.controller.run()
-
-        # stop hub and wait until it will exit
-        self.app.hub.stop()
-
 
 class Pool(object):
 
-    Worker = Worker
-
-    def __init__(self, app, controller, processes=None):
+    def __init__(self, app, controller):
         self.app = app
         self.controller = controller
         self._pool = []
-        self._processes = processes or 1
-        self.restart_state = restart_state(self._processes * 4, 1)
+        self._workers = []
+        self._processes = 0
+        self.restart_state = restart_state(10, 1)
         self._putlock = LaxBoundedSemaphore(self._processes)
 
     def _create_worker_process(self):
-        w = self.Worker(self.app)
-        self._pool.append(w)
-        w.daemon = True
-        w.start()
-        return w
+        p = Process(target=self._workers.pop(0).run)
+        self._pool.append(p)
+        p.daemon = True
+        p.start()
 
     def _join_exited_workers(self, shutdown=False):
         """Cleanup after any worker processes which have exited due to
@@ -154,6 +135,12 @@ class Pool(object):
             self._processes += 1
             if self._putlock:
                 self._putlock.grow()
+
+    def create(self, container):
+        worker = Worker(self.app, container)
+        self._workers.append(worker)
+        self.grow()
+        return worker.ident
 
     def start(self):
         for i in xrange(self._processes):

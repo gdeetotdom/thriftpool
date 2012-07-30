@@ -1,5 +1,6 @@
 from greenlet import GreenletExit
 from struct import Struct
+from threading import Event
 from thriftpool.utils.functional import cached_property
 
 try:
@@ -56,6 +57,9 @@ class Base(Protocol):
 
     app = None
 
+    def __init__(self):
+        self._shutdown_complete = Event()
+
     @cached_property
     def greenlet(self):
         return self.app.hub.Greenlet(run=self.run)
@@ -68,8 +72,9 @@ class Base(Protocol):
         try:
             while True:
                 self.loop()
-        except GreenletExit:
+        finally:
             self.destruct()
+            self._shutdown_complete.set()
 
     def initialize(self):
         raise NotImplementedError()
@@ -82,3 +87,4 @@ class Base(Protocol):
 
     def stop(self):
         self.greenlet.kill()
+        self._shutdown_complete.wait()
