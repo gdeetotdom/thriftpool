@@ -1,7 +1,14 @@
 
+__all__ = ['Container', 'Slot']
+
 
 class Container(object):
-    pass
+
+    def on_start(self):
+        pass
+
+    def on_stop(self):
+        pass
 
 
 class Slot(object):

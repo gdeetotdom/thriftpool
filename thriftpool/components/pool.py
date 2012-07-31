@@ -41,7 +41,8 @@ class Worker(LogsMixin):
         # wait for termination signal
         self.register_signal_handler()
 
-        # start remote worker
+        # start remote worker and container
+        self.container.on_start()
         self.remote_worker.start()
 
         # wait for shutdown event
@@ -50,6 +51,7 @@ class Worker(LogsMixin):
 
         # stop remote worker and wait until it will exit
         self.remote_worker.stop()
+        self.container.on_stop()
 
         # stop hub and wait until it will exit
         self.app.hub.stop()

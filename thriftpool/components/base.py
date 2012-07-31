@@ -158,7 +158,7 @@ class Component(object):
 
     #: This flag is reserved for the workers Consumer,
     #: since it is required to always be started last.
-    #: There can only be one object marked with lsat
+    #: There can only be one object marked with last
     #: in every namespace.
     last = False
 

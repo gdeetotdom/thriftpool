@@ -1,7 +1,8 @@
 from __future__ import absolute_import
 from thriftpool.components.base import StartStopComponent
+from thriftpool.containers.listener import ListenerContainer
 from thriftpool.utils.functional import cached_property
-from thriftpool.containers.base import Container
+from thriftpool.utils.other import mk_temp_path
 
 
 class Mediator(object):
@@ -30,13 +31,16 @@ class Mediator(object):
         self.worker_registred.disconnect(self.on_new_worker)
         self.worker_deleted.disconnect(self.on_deleted_worker)
 
-    def register(self, container):
+    def register_container(self, container):
         ident = self.pool.create(container)
         waiter = self._starting_workers[ident] = self.hub.Waiter()
         return waiter.get()
 
     def run(self):
-        self.register(Container())
+        proxy = self.register_container(ListenerContainer(self.app))
+        frontend = ('127.0.0.1', 10051)
+        backend = "ipc://{0}".format(mk_temp_path())
+        proxy.listen_for(frontend, backend)
 
     def on_new_worker(self, sender, ident):
         waiter = self._starting_workers.pop(ident, None)
@@ -51,7 +55,7 @@ class Mediator(object):
 class MediatorComponent(StartStopComponent):
 
     name = 'orchestrator.mediator'
-    requires = ('broker', 'pool')
+    requires = ('broker', 'pool', 'supervisor')
 
     def __init__(self, parent, **kwargs):
         parent.mediator = None

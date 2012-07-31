@@ -27,8 +27,6 @@ class Supervisor(DaemonThread):
         pool = self.pool
         controller = self.controller
 
-        time.sleep(0.8)
-
         try:
             # do a burst at startup to verify that we can start
             # our pool processes, and in that time we lower

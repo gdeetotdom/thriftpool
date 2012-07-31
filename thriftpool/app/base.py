@@ -1,7 +1,6 @@
+from billiard.util import register_after_fork
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
-from thriftpool.utils.structures import AttributeDict
-from billiard.util import register_after_fork
 import zmq
 
 __all__ = ['ThriftPool']
@@ -26,8 +25,16 @@ class ThriftPool(SubclassMixin):
         del self.ctx
 
     @cached_property
+    def Loader(self):
+        return self.subclass_with_self('thriftpool.app.loader:Loader')
+
+    @cached_property
+    def loader(self):
+        return self.Loader()
+
+    @cached_property
     def config(self):
-        return AttributeDict({'BROKER_ENDPOINT': 'tcp://*:5556'})
+        return self.loader.get_config()
 
     @cached_property
     def ctx(self):

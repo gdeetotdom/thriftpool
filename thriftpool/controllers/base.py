@@ -38,19 +38,24 @@ class Controller(LogsMixin):
         self.components = []
         self.namespace = self.Namespace(app=self.app).apply(self)
 
-    def _signal_handler(self, signum, frame, callback):
-        callback()
-
     def register_signal_handler(self):
         self._debug('Register signal handlers')
         signals['SIGINT'] = lambda signum, frame: self.stop()
         signals['SIGTERM'] = lambda signum, frame: self.stop()
         signals['SIGQUIT'] = lambda signum, frame: self.terminate()
 
+    def on_start(self):
+        self.app.loader.on_start()
+
+    def on_shutdown(self):
+        self.app.loader.on_shutdown()
+
     def start(self):
         self._state = self.RUNNING
 
         self.register_signal_handler()
+
+        self.on_start()
 
         try:
             for component in self.components:
@@ -100,6 +105,8 @@ class Controller(LogsMixin):
 
         # stop hub thread
         self.app.hub.stop()
+
+        self.on_shutdown()
 
         self._state = self.TERMINATED
         self._shutdown_complete.set()

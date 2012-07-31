@@ -4,7 +4,7 @@ import os
 import sys
 import traceback
 
-__all__ = ['DaemonThread']
+__all__ = ['SimpleDaemonThread']
 
 
 class DaemonThread(Thread):
@@ -51,3 +51,13 @@ class DaemonThread(Thread):
                                       None, sys.stderr)
         finally:
             del(exc_info)
+
+
+class SimpleDaemonThread(DaemonThread):
+
+    def __init__(self, target, name=None, **kwargs):
+        self.target = target
+        super(SimpleDaemonThread, self).__init__(name, **kwargs)
+
+    def body(self):
+        self.target()
