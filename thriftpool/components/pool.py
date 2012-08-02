@@ -2,78 +2,64 @@ from __future__ import absolute_import
 from billiard import Process
 from billiard.common import restart_state
 from billiard.pool import LaxBoundedSemaphore, EX_OK, WorkersJoined
+from collections import deque
 from logging import getLogger
-from threading import Event
 from thriftpool.components.base import StartStopComponent
+from thriftpool.utils.functional import cached_property
 from thriftpool.utils.logs import LogsMixin
-from thriftpool.utils.signals import signals
 import uuid
 
+__all__ = ['PoolComponent']
+
 logger = getLogger(__name__)
-
-
-class PoolComponent(StartStopComponent):
-
-    name = 'orchestrator.pool'
-    requires = ('broker',)
-
-    def create(self, parent):
-        pool = parent.pool = Pool(parent.app, parent)
-        return pool
 
 
 class Worker(LogsMixin):
 
     def __init__(self, app, container):
-        self._shutdown_complete = Event()
         self.ident = uuid.uuid4().hex
         self.app = app
         self.container = container
-        self.remote_worker = self.app.RemoteWorker(self.ident, self.container)
 
-    def register_signal_handler(self):
-        signals['SIGINT'] = lambda signum, frame: self.stop()
-        signals['SIGTERM'] = lambda signum, frame: self.stop()
+    @cached_property
+    def controller(self):
+        return self.app.WorkerController(self.ident, self.container)
 
     def run(self):
-        self._debug('Starting worker "%s".', self.ident)
-
-        # wait for termination signal
-        self.register_signal_handler()
-
-        # start remote worker and container
-        self.container.on_start()
-        self.remote_worker.start()
-
-        # wait for shutdown event
-        while not self._shutdown_complete.is_set():
-            self._shutdown_complete.wait(1e100)
-
-        # stop remote worker and wait until it will exit
-        self.remote_worker.stop()
-        self.container.on_stop()
-
-        # stop hub and wait until it will exit
-        self.app.hub.stop()
+        self._debug('Worker "%s" for container "%s" started.', self.ident,
+                    type(self.container).__name__)
+        self.controller.start()
 
     def stop(self):
-        self._debug('Stopping worker "%s".', self.ident)
-        self._shutdown_complete.set()
+        self._debug('Stopping worker "%s" for container "%s".', self.ident,
+                    type(self.container).__name__)
+        self.controller.stop()
+
+
+class BoundedProcess(Process):
+    """Process that will execute given worker."""
+
+    def __init__(self, worker):
+        self.worker = worker
+        super(BoundedProcess, self).__init__(target=self.worker.run)
 
 
 class Pool(object):
+    """Spawn and maintain worker pool."""
+
+    Process = BoundedProcess
 
     def __init__(self, app, controller):
         self.app = app
         self.controller = controller
         self._pool = []
-        self._workers = []
+        self._workers = deque()
         self._processes = 0
-        self.restart_state = restart_state(10, 1)
+        self.restart_state = restart_state(5, 1)
         self._putlock = LaxBoundedSemaphore(self._processes)
 
     def _create_worker_process(self):
-        p = Process(target=self._workers.pop(0).run)
+        p = self.Process(self._workers.popleft())
         self._pool.append(p)
         p.daemon = True
         p.start()
@@ -84,21 +70,21 @@ class Pool(object):
         cleaned up.
 
         """
-        if shutdown and not len(self._pool):
+        if shutdown and not self._pool:
             raise WorkersJoined()
 
         cleaned, exitcodes = [], {}
-        for i in reversed(range(len(self._pool))):
-            worker = self._pool[i]
-            if worker.exitcode is not None:
+        for i, process in enumerate(reversed(self._pool)):
+            if process.exitcode is not None:
                 # worker exited
-                worker.join()
-                cleaned.append(worker.pid)
-                exitcodes[worker.pid] = worker.exitcode
+                process.join()
+                cleaned.append(process.pid)
+                exitcodes[process.pid] = process.exitcode
+                self._workers.appendleft(process.worker)
                 del self._pool[i]
 
         if cleaned:
-            for worker in cleaned:
+            for pid in cleaned:
                 self._putlock.release()
             return exitcodes.values()
 
@@ -109,7 +95,7 @@ class Pool(object):
         for use after reaping workers which have exited.
 
         """
-        for i in range(self._processes - len(self._pool)):
+        for i in xrange(self._processes - len(self._pool)):
             if self.controller._state != self.controller.RUNNING:
                 return
             try:
@@ -124,10 +110,10 @@ class Pool(object):
         self._repopulate_pool(self._join_exited_workers())
 
     def shrink(self, n=1):
-        for i, worker in enumerate(self._pool):
+        for i, process in enumerate(self._pool):
             self._processes -= 1
             self._putlock.shrink()
-            worker.terminate()
+            process.terminate()
             if i == n - 1:
                 return
         raise ValueError("Can't shrink pool. All processes busy!")
@@ -154,9 +140,19 @@ class Pool(object):
 
     def close(self):
         self._putlock.clear()
-        for worker in self._pool:
-            worker.terminate()
+        for process in self._pool:
+            process.terminate()
 
     def join(self):
         for worker in self._pool:
             worker.join()
+
+
+class PoolComponent(StartStopComponent):
+
+    name = 'orchestrator.pool'
+    requires = ('broker',)
+
+    def create(self, parent):
+        pool = parent.pool = Pool(parent.app, parent)
+        return pool

@@ -2,10 +2,16 @@ from __future__ import absolute_import
 from thriftpool.components.base import StartStopComponent
 from thriftpool.containers.listener import ListenerContainer
 from thriftpool.utils.functional import cached_property
+from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.other import mk_temp_path
+import logging
+
+__all__ = ['MediatorComponent']
+
+logger = logging.getLogger(__name__)
 
 
-class Mediator(object):
+class Mediator(LogsMixin):
 
     def __init__(self, app, broker, pool):
         self._workers = {}
@@ -33,18 +39,20 @@ class Mediator(object):
 
     def register_container(self, container):
         ident = self.pool.create(container)
+        self._debug('Creating new worker "%s" for container "%s"', ident,
+                    type(container).__name__)
         waiter = self._starting_workers[ident] = self.hub.Waiter()
         return waiter.get()
 
     def run(self):
-        proxy = self.register_container(ListenerContainer(self.app))
+        listener_proxy = self.register_container(ListenerContainer(self.app))
         frontend = ('127.0.0.1', 10051)
         backend = "ipc://{0}".format(mk_temp_path())
-        proxy.listen_for(frontend, backend)
+        listener_proxy.listen_for(frontend, backend)
 
     def on_new_worker(self, sender, ident):
         waiter = self._starting_workers.pop(ident, None)
-        proxy = self._workers[ident] = self.app.RemoteProxy(ident)
+        proxy = self._workers[ident] = self.app.MDPProxy(ident)
         if waiter is not None:
             waiter.switch(proxy)
 

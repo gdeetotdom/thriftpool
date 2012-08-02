@@ -59,7 +59,7 @@ class Proxy(object):
     app = None
 
     def __init__(self, ident):
-        self.__client = self.app.RemoteClient(ident)
+        self.__client = self.app.MDPClient(ident)
 
     def __getattr__(self, name):
         client = self.__client

@@ -1,12 +1,14 @@
 from __future__ import absolute_import
 from logging import getLogger
-from thriftpool.components.base import Namespace as BaseNamespace
+from thriftpool.components.base import Namespace
 from thriftpool.controllers.base import Controller
+
+__all__ = ['OrchestratorController']
 
 logger = getLogger(__name__)
 
 
-class Namespace(BaseNamespace):
+class OrchestratorNamespace(Namespace):
 
     name = 'orchestrator'
 
@@ -17,6 +19,13 @@ class Namespace(BaseNamespace):
                 'thriftpool.components.mediator']
 
 
-class Orchestrator(Controller):
+class OrchestratorController(Controller):
 
-    Namespace = Namespace
+    Namespace = OrchestratorNamespace
+
+    def on_start(self):
+        self.app.loader.on_start()
+
+    def on_shutdown(self):
+        self.app.loader.on_shutdown()
+        self.app.hub.stop()

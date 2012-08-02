@@ -17,12 +17,17 @@ from thriftpool.utils.imports import qualname
 from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.signals import signals
 
+__all__ = ['Controller', 'NestedController']
+
 logger = getLogger(__name__)
 
 
 class Controller(LogsMixin):
 
     app = None
+
+    wait_for_shutdown = True
+    register_signals = True
 
     RUNNING = 0x1
     CLOSED = 0x2
@@ -45,15 +50,16 @@ class Controller(LogsMixin):
         signals['SIGQUIT'] = lambda signum, frame: self.terminate()
 
     def on_start(self):
-        self.app.loader.on_start()
+        pass
 
     def on_shutdown(self):
-        self.app.loader.on_shutdown()
+        pass
 
     def start(self):
         self._state = self.RUNNING
 
-        self.register_signal_handler()
+        if self.register_signals:
+            self.register_signal_handler()
 
         self.on_start()
 
@@ -78,7 +84,7 @@ class Controller(LogsMixin):
 
         # we can't simply execute Event.wait because signal processing will
         # not work in this case
-        while not self._shutdown_complete.is_set():
+        while self.wait_for_shutdown and not self._shutdown_complete.is_set():
             self._shutdown_complete.wait(1e100)
 
     def _shutdown(self, warm=True):
@@ -103,9 +109,6 @@ class Controller(LogsMixin):
                     stop = getattr(component, 'terminate', None) or stop
                 stop()
 
-        # stop hub thread
-        self.app.hub.stop()
-
         self.on_shutdown()
 
         self._state = self.TERMINATED
@@ -120,3 +123,9 @@ class Controller(LogsMixin):
         """Not so graceful shutdown of the worker server."""
         self._info('Terminate server!')
         self._shutdown(warm=False)
+
+
+class NestedController(Controller):
+
+    wait_for_shutdown = False
+    register_signals = False

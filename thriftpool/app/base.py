@@ -41,25 +41,33 @@ class ThriftPool(SubclassMixin):
         return zmq.Context()
 
     @cached_property
-    def Orchestrator(self):
-        return self.subclass_with_self('thriftpool.controllers.orchestrator:Orchestrator')
+    def OrchestratorController(self):
+        return self.subclass_with_self('thriftpool.controllers.orchestrator:OrchestratorController')
 
     @cached_property
     def orchestrator(self):
-        return self.Orchestrator()
+        return self.OrchestratorController()
 
     @cached_property
-    def RemoteBroker(self):
-        return self.subclass_with_self('thriftpool.rpc.broker:Broker')
+    def WorkerController(self):
+        return self.subclass_with_self('thriftpool.controllers.worker:WorkerController')
 
     @cached_property
-    def RemoteWorker(self):
-        return self.subclass_with_self('thriftpool.rpc.worker:Worker')
+    def ListenerController(self):
+        return self.subclass_with_self('thriftpool.controllers.listener:ListenerController')
 
     @cached_property
-    def RemoteClient(self):
-        return self.subclass_with_self('thriftpool.rpc.client:Client')
+    def MDPBroker(self):
+        return self.subclass_with_self('thriftpool.mdp.broker:Broker')
 
     @cached_property
-    def RemoteProxy(self):
-        return self.subclass_with_self('thriftpool.rpc.client:Proxy')
+    def MDPWorker(self):
+        return self.subclass_with_self('thriftpool.mdp.worker:Worker')
+
+    @cached_property
+    def MDPClient(self):
+        return self.subclass_with_self('thriftpool.mdp.client:Client')
+
+    @cached_property
+    def MDPProxy(self):
+        return self.subclass_with_self('thriftpool.mdp.client:Proxy')

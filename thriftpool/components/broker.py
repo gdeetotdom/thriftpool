@@ -11,5 +11,5 @@ class BrokerComponent(StartStopComponent):
         super(BrokerComponent, self).__init__(parent, **kwargs)
 
     def create(self, parent):
-        broker = parent.broker = parent.app.RemoteBroker()
+        broker = parent.broker = parent.app.MDPBroker()
         return broker

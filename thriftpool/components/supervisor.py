@@ -5,15 +5,7 @@ from thriftpool.components.base import StartStopComponent
 from thriftpool.utils.threads import DaemonThread
 import time
 
-
-class SupervisorComponent(StartStopComponent):
-
-    name = 'orchestrator.supervisor'
-    requires = ('pool',)
-
-    def create(self, parent):
-        supervisor = parent.supervisor = Supervisor(parent.pool, parent)
-        return supervisor
+__all__ = ['SupervisorComponent']
 
 
 class Supervisor(DaemonThread):
@@ -32,7 +24,7 @@ class Supervisor(DaemonThread):
             # our pool processes, and in that time we lower
             # the max restart frequency.
             prev_state = pool.restart_state
-            pool.restart_state = restart_state(pool._processes * 2, 1)
+            pool.restart_state = restart_state(2, 1)
             for _ in xrange(10):
                 if controller._state == controller.RUNNING:
                     pool._maintain_pool()
@@ -49,3 +41,13 @@ class Supervisor(DaemonThread):
             pool.close()
             pool.join()
             raise
+
+
+class SupervisorComponent(StartStopComponent):
+
+    name = 'orchestrator.supervisor'
+    requires = ('pool',)
+
+    def create(self, parent):
+        supervisor = parent.supervisor = Supervisor(parent.pool, parent)
+        return supervisor
