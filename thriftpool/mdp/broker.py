@@ -34,7 +34,7 @@ class WorkerRepository(LogsMixin):
 
     def __delitem__(self, ident):
         """Delete the worker."""
-        self._info("Deleting worker: %s", ident)
+        self._debug("Deleting worker: %s", ident)
         try:
             del self.workers[ident]
             self.hub.Greenlet(self.worker_deleted.send, sender=self, ident=ident).start()
@@ -50,7 +50,7 @@ class WorkerRepository(LogsMixin):
         try:
             worker = self.workers[ident]
         except KeyError:
-            self._info("Registering new worker: %s", ident)
+            self._debug("Registering new worker: %s", ident)
             worker = self.workers[ident] = self.Entity(address)
             self.hub.Greenlet(self.worker_registred.send, sender=self, ident=ident).start()
         return worker

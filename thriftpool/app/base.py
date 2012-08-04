@@ -13,6 +13,14 @@ class ThriftPool(SubclassMixin):
         super(ThriftPool, self).__init__()
 
     @cached_property
+    def Logging(self):
+        return self.subclass_with_self('thriftpool.app.log:Logging')
+
+    @cached_property
+    def log(self):
+        return self.Logging()
+
+    @cached_property
     def Hub(self):
         return self.subclass_with_self('thriftpool.app.hub:Hub')
 

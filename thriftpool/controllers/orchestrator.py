@@ -23,6 +23,9 @@ class OrchestratorController(Controller):
 
     Namespace = OrchestratorNamespace
 
+    def on_before_init(self):
+        self.app.loader.on_before_init()
+
     def on_start(self):
         self.app.loader.on_start()
 

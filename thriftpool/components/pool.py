@@ -41,7 +41,9 @@ class BoundedProcess(Process):
 
     def __init__(self, worker):
         self.worker = worker
+        name = type(worker.container).__name__.replace('Container', '')
         super(BoundedProcess, self).__init__(target=self.worker.run)
+        self._name = name + '-' + ':'.join(str(i) for i in self._identity)
 
 
 class Pool(object):

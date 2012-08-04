@@ -16,6 +16,9 @@ class Loader(object):
     def get_config(self):
         return self._config
 
+    def on_before_init(self):
+        self.app.log.setup()
+
     def on_start(self):
         """Called before controller starts."""
         self._config.update(BROKER_ENDPOINT='ipc://{0}'.format(mk_temp_path()))

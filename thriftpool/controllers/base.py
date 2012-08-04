@@ -40,6 +40,7 @@ class Controller(LogsMixin):
         self._state = None
         self._shutdown_complete = Event()
         self._finalize = Finalize(self, self.stop, exitpriority=1)
+        self.on_before_init()
         self.components = []
         self.namespace = self.Namespace(app=self.app).apply(self)
 
@@ -48,6 +49,9 @@ class Controller(LogsMixin):
         signals['SIGINT'] = lambda signum, frame: self.stop()
         signals['SIGTERM'] = lambda signum, frame: self.stop()
         signals['SIGQUIT'] = lambda signum, frame: self.terminate()
+
+    def on_before_init(self):
+        pass
 
     def on_start(self):
         pass

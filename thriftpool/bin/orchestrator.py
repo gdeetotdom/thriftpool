@@ -1,10 +1,7 @@
 from __future__ import absolute_import
 from billiard import freeze_support
-from logging import basicConfig, DEBUG
 from thriftpool.app.base import ThriftPool
 import sys
-
-basicConfig(level=DEBUG)
 
 
 def main():
