@@ -3,21 +3,25 @@ from socket_zmq.utils import in_loop
 from thriftpool.components.base import StartStopComponent
 from thriftpool.utils.threads import SimpleDaemonThread
 
-__all__ = ['ListenerLoopComponent']
+__all__ = ['EventLoopContainer']
 
 
-class LoopContainer(object):
+class EventLoopContainer(object):
     """Run event loop in separate thread."""
 
     def __init__(self, loop):
         self.loop = loop
-        self.thread = SimpleDaemonThread(target=self.loop.start)
+        self._on_stop = self.loop.async(lambda *args: None)
+        self._on_stop.start()
+        self.thread = SimpleDaemonThread(target=self.loop.start,
+                                         name='EventLoop')
 
     def start(self):
         self.thread.start()
 
     @in_loop
     def _shutdown(self):
+        self._on_stop.stop()
         self.loop.stop()
 
     def stop(self):
@@ -25,9 +29,9 @@ class LoopContainer(object):
         self.thread.stop()
 
 
-class ListenerLoopComponent(StartStopComponent):
+class EventLoopComponent(StartStopComponent):
 
-    name = 'listener.listener_loop'
+    name = 'listener.event_loop'
 
     def create(self, parent):
-        return LoopContainer(parent.socket_zmq.loop)
+        return EventLoopContainer(parent.socket_zmq.loop)

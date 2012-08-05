@@ -1,10 +1,11 @@
 from __future__ import absolute_import
+from thriftpool.cartridges.listener import ListenerCartridge
 from thriftpool.components.base import StartStopComponent
-from thriftpool.containers.listener import ListenerContainer
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.other import mk_temp_path
 import logging
+from thriftpool.cartridges.worker import WorkerCartridge
 
 __all__ = ['MediatorComponent']
 
@@ -37,18 +38,20 @@ class Mediator(LogsMixin):
         self.worker_registred.disconnect(self.on_new_worker)
         self.worker_deleted.disconnect(self.on_deleted_worker)
 
-    def register_container(self, container):
-        ident = self.pool.create(container)
-        self._debug('Creating new worker "%s" for container "%s"', ident,
-                    type(container).__name__)
+    def register_cartridge(self, cartridge):
+        ident = self.pool.create(cartridge)
+        self._debug('Initiate cartridge "%s"', type(cartridge).__name__)
         waiter = self._starting_workers[ident] = self.hub.Waiter()
         return waiter.get()
 
     def run(self):
-        listener_proxy = self.register_container(ListenerContainer(self.app))
+        listener_proxy = self.register_cartridge(ListenerCartridge(self.app))
         frontend = ('127.0.0.1', 10051)
         backend = "ipc://{0}".format(mk_temp_path())
         listener_proxy.listen_for(frontend, backend)
+
+        worker_proxy = self.register_cartridge(WorkerCartridge(self.app))
+        worker_proxy.handle(backend)
 
     def on_new_worker(self, sender, ident):
         waiter = self._starting_workers.pop(ident, None)

@@ -16,23 +16,23 @@ logger = getLogger(__name__)
 
 class Worker(LogsMixin):
 
-    def __init__(self, app, container):
+    def __init__(self, app, cartridge):
         self.ident = uuid.uuid4().hex
         self.app = app
-        self.container = container
+        self.cartridge = cartridge
 
     @cached_property
     def controller(self):
-        return self.app.WorkerController(self.ident, self.container)
+        return self.app.CartridgeController(self.ident, self.cartridge)
 
     def run(self):
-        self._debug('Worker "%s" for container "%s" started.', self.ident,
-                    type(self.container).__name__)
+        self._debug('Process "%s" for cartridge "%s" started.', self.ident,
+                    type(self.cartridge).__name__)
         self.controller.start()
 
     def stop(self):
-        self._debug('Stopping worker "%s" for container "%s".', self.ident,
-                    type(self.container).__name__)
+        self._debug('Stopping process "%s" for cartridge "%s".', self.ident,
+                    type(self.cartridge).__name__)
         self.controller.stop()
 
 
@@ -41,7 +41,7 @@ class BoundedProcess(Process):
 
     def __init__(self, worker):
         self.worker = worker
-        name = type(worker.container).__name__.replace('Container', '')
+        name = type(worker.cartridge).__name__
         super(BoundedProcess, self).__init__(target=self.worker.run)
         self._name = name + '-' + ':'.join(str(i) for i in self._identity)
 
@@ -126,8 +126,8 @@ class Pool(object):
             if self._putlock:
                 self._putlock.grow()
 
-    def create(self, container):
-        worker = Worker(self.app, container)
+    def create(self, cartridge):
+        worker = Worker(self.app, cartridge)
         self._workers.append(worker)
         self.grow()
         return worker.ident

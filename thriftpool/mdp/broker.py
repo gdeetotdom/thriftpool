@@ -10,23 +10,23 @@ import zmq
 logger = logging.getLogger(__name__)
 
 
-class WorkerEntity(namedtuple('WorkerEntity', 'address')):
-    """Some information about registered worker."""
+class ServiceEntity(namedtuple('WorkerEntity', 'address')):
+    """Some information about registered service."""
 
 
-class WorkerRepository(LogsMixin):
+class ServiceRepository(LogsMixin):
     """Contains all registered workers. Provide methods to work with this set.
 
     """
 
-    Entity = WorkerEntity
+    Entity = ServiceEntity
 
     def __init__(self, hub, worker_registred, worker_deleted):
         self.workers = {}
         self.hub = hub
         self.worker_registred = worker_registred
         self.worker_deleted = worker_deleted
-        super(WorkerRepository, self).__init__()
+        super(ServiceRepository, self).__init__()
 
     def __getitem__(self, ident):
         """Get the worker."""
@@ -68,9 +68,9 @@ class Broker(Base, LogsMixin):
         # called when new worker registered.
         self.worker_registred = Signal()
         # create new repository
-        self.repo = WorkerRepository(self.app.hub,
-                                     self.worker_registred,
-                                     self.worker_deleted)
+        self.repo = ServiceRepository(self.app.hub,
+                                      self.worker_registred,
+                                      self.worker_deleted)
         super(Broker, self).__init__()
 
     @cached_property

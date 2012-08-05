@@ -4,15 +4,17 @@ from thriftpool.utils.socket import Socket
 import logging
 import zmq
 
+__all__ = ['Service']
+
 logger = logging.getLogger(__name__)
 
 
-class BaseWorker(Base):
+class BaseService(Base):
 
     def __init__(self, ident):
         self.ident = ident
         self.reply_to = None
-        super(BaseWorker, self).__init__()
+        super(BaseService, self).__init__()
 
     @cached_property
     def socket(self):
@@ -61,11 +63,11 @@ class BaseWorker(Base):
         self.send(self.WorkerCommands.REPLY, [self.reply_to, '', self.encode(result)])
 
 
-class Worker(BaseWorker):
+class Service(BaseService):
 
     def __init__(self, ident, handler):
         self.handler = handler
-        super(Worker, self).__init__(ident)
+        super(Service, self).__init__(ident)
 
     def loop(self):
         request = self.read_request()

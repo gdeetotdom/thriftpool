@@ -57,20 +57,24 @@ class ThriftPool(SubclassMixin):
         return self.OrchestratorController()
 
     @cached_property
-    def WorkerController(self):
-        return self.subclass_with_self('thriftpool.controllers.worker:WorkerController')
+    def CartridgeController(self):
+        return self.subclass_with_self('thriftpool.controllers.cartridge:CartridgeController')
 
     @cached_property
     def ListenerController(self):
         return self.subclass_with_self('thriftpool.controllers.listener:ListenerController')
 
     @cached_property
+    def WorkerController(self):
+        return self.subclass_with_self('thriftpool.controllers.worker:WorkerController')
+
+    @cached_property
     def MDPBroker(self):
         return self.subclass_with_self('thriftpool.mdp.broker:Broker')
 
     @cached_property
-    def MDPWorker(self):
-        return self.subclass_with_self('thriftpool.mdp.worker:Worker')
+    def MDPService(self):
+        return self.subclass_with_self('thriftpool.mdp.service:Service')
 
     @cached_property
     def MDPClient(self):

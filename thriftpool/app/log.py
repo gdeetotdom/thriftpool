@@ -1,5 +1,6 @@
 from logging.handlers import WatchedFileHandler
-from thriftpool.utils.logs import ColorFormatter, ProcessAwareLogger
+from thriftpool.utils.logs import ColorFormatter, ProcessAwareLogger,\
+    LoggingProxy
 import logging
 import sys
 
@@ -30,11 +31,21 @@ class Logging(object):
         self.loglevel = logging.DEBUG
         self.format = DEFAULT_LOG_FMT
 
-    def setup(self):
-        ensure_process_aware()
-        root = logging.getLogger()
-        root.setLevel(self.loglevel)
-        self.setup_handlers(root, self.logfile, self.format)
+    def redirect_stdouts_to_logger(self, logger, loglevel=None,
+            stdout=True, stderr=True):
+        """Redirect :class:`sys.stdout` and :class:`sys.stderr` to a
+        logging instance.
+
+        :param logger: The :class:`logging.Logger` instance to redirect to.
+        :param loglevel: The loglevel redirected messages will be logged as.
+
+        """
+        proxy = LoggingProxy(logger, loglevel)
+        if stdout:
+            sys.stdout = proxy
+        if stderr:
+            sys.stderr = proxy
+        return proxy
 
     def get_handler(self, logfile=None):
         """Create log handler with either a filename, an open stream
@@ -58,3 +69,11 @@ class Logging(object):
         handler.setFormatter(formatter(format, use_color=colorize, datefmt=datefmt))
         logger.addHandler(handler)
         return logger
+
+    def setup(self):
+        ensure_process_aware()
+        root = logging.getLogger()
+        root.setLevel(self.loglevel)
+        self.setup_handlers(root, self.logfile, self.format)
+        self.redirect_stdouts_to_logger(root)
+

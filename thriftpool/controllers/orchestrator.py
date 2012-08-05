@@ -13,10 +13,10 @@ class OrchestratorNamespace(Namespace):
     name = 'orchestrator'
 
     def modules(self):
-        return ['thriftpool.components.broker',
-                'thriftpool.components.pool',
-                'thriftpool.components.supervisor',
-                'thriftpool.components.mediator']
+        return ['thriftpool.components.orchestrator.broker',
+                'thriftpool.components.orchestrator.pool',
+                'thriftpool.components.orchestrator.supervisor',
+                'thriftpool.components.orchestrator.mediator']
 
 
 class OrchestratorController(Controller):

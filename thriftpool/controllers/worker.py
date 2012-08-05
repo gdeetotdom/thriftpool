@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from logging import getLogger
 from thriftpool.components.base import Namespace
-from thriftpool.controllers.base import Controller
+from thriftpool.controllers.base import NestedController
 
 __all__ = ['WorkerController']
 
@@ -13,21 +13,14 @@ class WorkerNamespace(Namespace):
     name = 'worker'
 
     def modules(self):
-        return ['thriftpool.components.remote_worker']
+        return ['thriftpool.components.worker.pool']
 
 
-class WorkerController(Controller):
+class WorkerController(NestedController):
 
     Namespace = WorkerNamespace
 
-    def __init__(self, ident, container):
-        self.ident = ident
-        self.container = container
+    def __init__(self, socket_zmq):
+        self.socket_zmq = socket_zmq
+        self.pool = None
         super(WorkerController, self).__init__()
-
-    def on_start(self):
-        self.container.on_start()
-
-    def on_shutdown(self):
-        self.container.on_stop()
-        self.app.hub.stop()

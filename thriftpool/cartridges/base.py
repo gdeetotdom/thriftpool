@@ -1,9 +1,9 @@
 from thriftpool.utils.functional import cached_property
 
-__all__ = ['Container', 'ControllerContainer', 'Slot']
+__all__ = ['Cartridge', 'ControllerCartridge']
 
 
-class Container(object):
+class Cartridge(object):
 
     def __init__(self, app):
         self.app = app
@@ -15,7 +15,7 @@ class Container(object):
         pass
 
 
-class ControllerContainer(Container):
+class ControllerCartridge(Cartridge):
 
     @cached_property
     def controller(self):
@@ -29,7 +29,3 @@ class ControllerContainer(Container):
 
     def on_stop(self):
         self.controller.stop()
-
-
-class Slot(object):
-    pass

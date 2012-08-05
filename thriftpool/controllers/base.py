@@ -84,7 +84,7 @@ class Controller(LogsMixin):
             self._debug('Terminating from keyboard')
             self.stop()
 
-        self._info('Server started!')
+        self._debug('Controller started!')
 
         # we can't simply execute Event.wait because signal processing will
         # not work in this case
@@ -115,21 +115,27 @@ class Controller(LogsMixin):
 
         self.on_shutdown()
 
+        self._debug('Controller stopped!')
+
         self._state = self.TERMINATED
         self._shutdown_complete.set()
 
     def stop(self):
         """Graceful shutdown of the worker server."""
-        self._info('Stop server!')
+        self._debug('Stop controller!')
         self._shutdown(warm=True)
 
     def terminate(self):
         """Not so graceful shutdown of the worker server."""
-        self._info('Terminate server!')
+        self._debug('Terminate controller!')
         self._shutdown(warm=False)
 
 
 class NestedController(Controller):
+    """This controller can be used as nested controller. It don't handle signal
+    and block process.
+
+    """
 
     wait_for_shutdown = False
     register_signals = False
