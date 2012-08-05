@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 from socket_zmq.utils import cached_property
 from struct import Struct
-from threading import Event
 from thrift.protocol.TBinaryProtocol import (
     TBinaryProtocolAcceleratedFactory as TProtocolFactory)
 from thrift.transport.TTransport import TMemoryBuffer
@@ -29,10 +28,6 @@ class Connection(object):
         self.backend = backend
         self.processor = processor
         self.out_factory = self.in_factory = TProtocolFactory()
-
-    @cached_property
-    def ident(self):
-        return str(id(self))
 
     @cached_property
     def socket(self):
@@ -70,7 +65,6 @@ class Pool(LoopThread, SubclassMixin):
     def __init__(self, app, max_workers=None):
         super(Pool, self).__init__()
         self.context = app.ctx
-        self.max_workers = max_workers or 10
         self.poller = Poller()
         self.connections = {}
 

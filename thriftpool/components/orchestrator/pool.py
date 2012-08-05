@@ -8,13 +8,8 @@ from logging import getLogger
 from thriftpool.components.base import StartStopComponent
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.logs import LogsMixin
+from thriftpool.utils.proctitle import setproctitle
 import uuid
-
-try:
-    from setproctitle import setproctitle
-except ImportError:
-    def setproctitle(title):
-        pass
 
 __all__ = ['PoolComponent']
 

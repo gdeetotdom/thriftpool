@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from logging import getLogger
 from thriftpool.components.base import Namespace
 from thriftpool.controllers.base import Controller
+from thriftpool.utils.proctitle import setproctitle
 
 __all__ = ['OrchestratorController']
 
@@ -27,6 +28,7 @@ class OrchestratorController(Controller):
         self.app.loader.on_before_init()
 
     def on_start(self):
+        setproctitle('[{0}]'.format('Orchestrator'))
         self.app.loader.on_start()
 
     def on_shutdown(self):
