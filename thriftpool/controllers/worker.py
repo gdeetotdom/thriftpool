@@ -20,7 +20,6 @@ class WorkerController(NestedController):
 
     Namespace = WorkerNamespace
 
-    def __init__(self, socket_zmq):
-        self.socket_zmq = socket_zmq
+    def __init__(self):
         self.pool = None
         super(WorkerController, self).__init__()

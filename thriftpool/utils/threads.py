@@ -4,7 +4,7 @@ import os
 import sys
 import traceback
 
-__all__ = ['SimpleDaemonThread']
+__all__ = ['DaemonThread', 'LoopThread', 'SimpleDaemonThread']
 
 
 class DaemonThread(Thread):
@@ -51,6 +51,33 @@ class DaemonThread(Thread):
                                       None, sys.stderr)
         finally:
             del(exc_info)
+
+
+class LoopThread(DaemonThread):
+
+    def __init__(self, name=None, **kwargs):
+        super(LoopThread, self).__init__(name, **kwargs)
+        self._is_shutdown = Event()
+
+    def on_start(self):
+        pass
+
+    def on_stop(self):
+        pass
+
+    def body(self):
+        self.on_start()
+        while not self._is_shutdown.is_set():
+            self.loop()
+        self.on_stop()
+
+    def loop(self):
+        raise NotImplementedError('subclass responsibility')
+
+    def stop(self):
+        """Graceful shutdown."""
+        self._is_shutdown.set()
+        super(LoopThread, self).stop()
 
 
 class SimpleDaemonThread(DaemonThread):

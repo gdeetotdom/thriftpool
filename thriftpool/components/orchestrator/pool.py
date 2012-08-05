@@ -2,12 +2,19 @@ from __future__ import absolute_import
 from billiard import Process
 from billiard.common import restart_state
 from billiard.pool import LaxBoundedSemaphore, EX_OK, WorkersJoined
+from billiard.process import current_process
 from collections import deque
 from logging import getLogger
 from thriftpool.components.base import StartStopComponent
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.logs import LogsMixin
 import uuid
+
+try:
+    from setproctitle import setproctitle
+except ImportError:
+    def setproctitle(title):
+        pass
 
 __all__ = ['PoolComponent']
 
@@ -28,6 +35,7 @@ class Worker(LogsMixin):
     def run(self):
         self._debug('Process "%s" for cartridge "%s" started.', self.ident,
                     type(self.cartridge).__name__)
+        setproctitle('[{0}]'.format(current_process().name))
         self.controller.start()
 
     def stop(self):
@@ -76,7 +84,7 @@ class Pool(object):
             raise WorkersJoined()
 
         cleaned, exitcodes = [], {}
-        for i, process in enumerate(reversed(self._pool)):
+        for i, process in enumerate(self._pool):
             if process.exitcode is not None:
                 # worker exited
                 process.join()
