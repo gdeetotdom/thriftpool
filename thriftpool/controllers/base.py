@@ -17,7 +17,7 @@ from thriftpool.utils.imports import qualname
 from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.signals import signals
 
-__all__ = ['Controller', 'NestedController']
+__all__ = ['Controller']
 
 logger = getLogger(__name__)
 
@@ -56,8 +56,12 @@ class Controller(LogsMixin):
     def on_start(self):
         pass
 
-    def on_shutdown(self):
+    def after_start(self):
         pass
+
+    def on_shutdown(self):
+        self.app.hub.stop()
+        self.app.context.destroy()
 
     def start(self):
         self._state = self.RUNNING
@@ -85,6 +89,8 @@ class Controller(LogsMixin):
             self.stop()
 
         self._debug('Controller started!')
+
+        self.after_start()
 
         # we can't simply execute Event.wait because signal processing will
         # not work in this case
@@ -129,13 +135,3 @@ class Controller(LogsMixin):
         """Not so graceful shutdown of the worker server."""
         self._debug('Terminate controller!')
         self._shutdown(warm=False)
-
-
-class NestedController(Controller):
-    """This controller can be used as nested controller. It don't handle signal
-    and block process.
-
-    """
-
-    wait_for_shutdown = False
-    register_signals = False

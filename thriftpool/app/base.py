@@ -12,6 +12,10 @@ class ThriftPool(SubclassMixin):
         register_after_fork(self, self._after_fork)
         super(ThriftPool, self).__init__()
 
+    def finalize(self):
+        self.config = self.loader.get_config()
+        self.slots = self.loader.get_slots()
+
     @cached_property
     def Logging(self):
         return self.subclass_with_self('thriftpool.app.log:Logging')
@@ -42,7 +46,11 @@ class ThriftPool(SubclassMixin):
 
     @cached_property
     def config(self):
-        return self.loader.get_config()
+        return {}
+
+    @cached_property
+    def slots(self):
+        return []
 
     @cached_property
     def context(self):

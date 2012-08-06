@@ -2,10 +2,10 @@ from __future__ import absolute_import
 from collections import deque
 from thriftpool.components.base import StartStopComponent
 
-__all__ = ['ListenerPoolComponent']
+__all__ = ['PoolComponent']
 
 
-class ListenerPoolContainer(object):
+class PoolContainer(object):
     """Maintain pool of listeners."""
 
     def __init__(self, socket_zmq):
@@ -20,16 +20,16 @@ class ListenerPoolContainer(object):
             listener = self.pool.popleft()
             listener.stop()
 
-    def add(self, listener):
+    def register(self, listener):
         self.pool.append(listener)
         listener.start()
 
 
-class ListenerPoolComponent(StartStopComponent):
+class PoolComponent(StartStopComponent):
 
-    name = 'listener.proxy_pool'
+    name = 'listener.pool'
     requires = ('event_loop',)
 
     def create(self, parent):
-        pool = parent.pool = ListenerPoolContainer(parent.socket_zmq)
+        pool = parent.pool = PoolContainer(parent.socket_zmq)
         return pool

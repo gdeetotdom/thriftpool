@@ -1,11 +1,8 @@
 from __future__ import absolute_import
-from thriftpool.cartridges.listener import ListenerCartridge
 from thriftpool.components.base import StartStopComponent
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.logs import LogsMixin
-from thriftpool.utils.other import mk_temp_path
 import logging
-from thriftpool.cartridges.worker import WorkerCartridge
 
 __all__ = ['MediatorComponent']
 
@@ -14,13 +11,12 @@ logger = logging.getLogger(__name__)
 
 class Mediator(LogsMixin):
 
-    def __init__(self, app, broker, pool):
+    def __init__(self, app, broker):
         self._workers = {}
         self._starting_workers = {}
         self.app = app
         self.hub = app.hub
         self.broker = broker
-        self.pool = pool
         self.worker_registred = self.broker.worker_registred
         self.worker_deleted = self.broker.worker_deleted
 
@@ -37,28 +33,18 @@ class Mediator(LogsMixin):
         self.greenlet.kill()
         self.worker_registred.disconnect(self.on_new_worker)
         self.worker_deleted.disconnect(self.on_deleted_worker)
-        while self._workers:
-            ident, proxy = self._workers.popitem()
-            proxy.destruct()
+        self._workers.clear()
 
-    def register_cartridge(self, cartridge):
-        ident = self.pool.create(cartridge)
-        self._debug('Initiate cartridge "%s"', type(cartridge).__name__)
+    def register(self, ident):
         waiter = self._starting_workers[ident] = self.hub.Waiter()
         return waiter.get()
 
     def run(self):
-        listener_proxy = self.register_cartridge(ListenerCartridge(self.app))
-        frontend = ('127.0.0.1', 10051)
-        backend = "ipc://{0}".format(mk_temp_path('listener'))
-        listener_proxy.listen_for(frontend, backend)
-
-        worker_proxy = self.register_cartridge(WorkerCartridge(self.app))
-        worker_proxy.handle(backend)
+        pass
 
     def on_new_worker(self, sender, ident):
-        waiter = self._starting_workers.pop(ident, None)
         proxy = self._workers[ident] = self.app.MDPProxy(ident)
+        waiter = self._starting_workers.pop(ident, None)
         if waiter is not None:
             waiter.switch(proxy)
 
@@ -76,5 +62,5 @@ class MediatorComponent(StartStopComponent):
         super(MediatorComponent, self).__init__(parent, **kwargs)
 
     def create(self, parent):
-        broker = parent.mediator = Mediator(parent.app, parent.broker, parent.pool)
+        broker = parent.mediator = Mediator(parent.app, parent.broker)
         return broker

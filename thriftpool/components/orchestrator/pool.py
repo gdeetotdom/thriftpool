@@ -2,51 +2,28 @@ from __future__ import absolute_import
 from billiard import Process
 from billiard.common import restart_state
 from billiard.pool import LaxBoundedSemaphore, EX_OK, WorkersJoined
-from billiard.process import current_process
 from collections import deque
 from logging import getLogger
 from thriftpool.components.base import StartStopComponent
-from thriftpool.utils.functional import cached_property
-from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.proctitle import setproctitle
-import uuid
+import itertools
 
 __all__ = ['PoolComponent']
 
 logger = getLogger(__name__)
 
 
-class Worker(LogsMixin):
+class BoundedProcess(Process):
+    """Process that will execute given controller."""
 
-    def __init__(self, app, cartridge):
-        self.ident = uuid.uuid4().hex
-        self.app = app
-        self.cartridge = cartridge
-
-    @cached_property
-    def controller(self):
-        return self.app.CartridgeController(self.ident, self.cartridge)
+    def __init__(self, controller, num=0):
+        self.controller = controller
+        super(BoundedProcess, self).__init__(
+            name="{0}-{1}".format(type(self.controller).__name__, num))
 
     def run(self):
-        self._debug('Process "%s" for cartridge "%s" started.', self.ident,
-                    type(self.cartridge).__name__)
-        setproctitle('[{0}]'.format(current_process().name))
+        setproctitle('[{0}]'.format(self.name))
         self.controller.start()
-
-    def stop(self):
-        self._debug('Stopping process "%s" for cartridge "%s".', self.ident,
-                    type(self.cartridge).__name__)
-        self.controller.stop()
-
-
-class BoundedProcess(Process):
-    """Process that will execute given worker."""
-
-    def __init__(self, worker):
-        self.worker = worker
-        name = type(worker.cartridge).__name__
-        super(BoundedProcess, self).__init__(target=self.worker.run)
-        self._name = name + '-' + ':'.join(str(i) for i in self._identity)
 
 
 class Pool(object):
@@ -54,17 +31,16 @@ class Pool(object):
 
     Process = BoundedProcess
 
-    def __init__(self, app, controller):
-        self.app = app
-        self.controller = controller
+    def __init__(self):
         self._pool = []
-        self._workers = deque()
+        self._queue = deque()
         self._processes = 0
+        self._next_number = itertools.count()
         self.restart_state = restart_state(5, 1)
         self._putlock = LaxBoundedSemaphore(self._processes)
 
     def _create_worker_process(self):
-        p = self.Process(self._workers.popleft())
+        p = self.Process(self._queue.popleft(), self._next_number.next())
         self._pool.append(p)
         p.daemon = True
         p.start()
@@ -85,7 +61,7 @@ class Pool(object):
                 process.join()
                 cleaned.append(process.pid)
                 exitcodes[process.pid] = process.exitcode
-                self._workers.appendleft(process.worker)
+                self._queue.appendleft(process.controller)
                 del self._pool[i]
 
         if cleaned:
@@ -101,8 +77,6 @@ class Pool(object):
 
         """
         for i in xrange(self._processes - len(self._pool)):
-            if self.controller._state != self.controller.RUNNING:
-                return
             try:
                 if exitcodes and exitcodes[i] != EX_OK:
                     self.restart_state.step()
@@ -129,11 +103,9 @@ class Pool(object):
             if self._putlock:
                 self._putlock.grow()
 
-    def create(self, cartridge):
-        worker = Worker(self.app, cartridge)
-        self._workers.append(worker)
+    def register(self, controller):
+        self._queue.append(controller)
         self.grow()
-        return worker.ident
 
     def start(self):
         for i in xrange(self._processes):
@@ -159,5 +131,5 @@ class PoolComponent(StartStopComponent):
     requires = ('broker',)
 
     def create(self, parent):
-        pool = parent.pool = Pool(parent.app, parent)
+        pool = parent.pool = Pool()
         return pool

@@ -24,14 +24,26 @@ class OrchestratorController(Controller):
 
     Namespace = OrchestratorNamespace
 
+    def __init__(self):
+        self.pool = None
+        super(OrchestratorController, self).__init__()
+
     def on_before_init(self):
         self.app.loader.on_before_init()
+        self.app.finalize()
+        super(OrchestratorController, self).on_before_init()
 
     def on_start(self):
         setproctitle('[{0}]'.format('Orchestrator'))
         self.app.loader.on_start()
+        super(OrchestratorController, self).on_start()
 
     def on_shutdown(self):
         self.app.loader.on_shutdown()
-        self.app.hub.stop()
-        self.app.context.destroy()
+        super(OrchestratorController, self).on_shutdown()
+
+    def after_start(self):
+        self.pool.register(self.app.ListenerController())
+        for i in xrange(2):
+            self.pool.register(self.app.WorkerController())
+        super(OrchestratorController, self).after_start()
