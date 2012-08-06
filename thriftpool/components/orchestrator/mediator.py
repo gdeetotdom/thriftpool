@@ -37,6 +37,9 @@ class Mediator(LogsMixin):
         self.greenlet.kill()
         self.worker_registred.disconnect(self.on_new_worker)
         self.worker_deleted.disconnect(self.on_deleted_worker)
+        while self._workers:
+            ident, proxy = self._workers.popitem()
+            proxy.destruct()
 
     def register_cartridge(self, cartridge):
         ident = self.pool.create(cartridge)
@@ -47,7 +50,7 @@ class Mediator(LogsMixin):
     def run(self):
         listener_proxy = self.register_cartridge(ListenerCartridge(self.app))
         frontend = ('127.0.0.1', 10051)
-        backend = "ipc://{0}".format(mk_temp_path())
+        backend = "ipc://{0}".format(mk_temp_path('listener'))
         listener_proxy.listen_for(frontend, backend)
 
         worker_proxy = self.register_cartridge(WorkerCartridge(self.app))
@@ -60,7 +63,7 @@ class Mediator(LogsMixin):
             waiter.switch(proxy)
 
     def on_deleted_worker(self, sender, ident):
-        del self._workers[ident]
+        self._workers.pop(ident)
 
 
 class MediatorComponent(StartStopComponent):

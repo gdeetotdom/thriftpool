@@ -31,3 +31,4 @@ class CartridgeController(Controller):
     def on_shutdown(self):
         self.cartridge.on_stop()
         self.app.hub.stop()
+        self.app.context.destroy()

@@ -18,7 +18,7 @@ class Client(Protocol):
 
     @cached_property
     def socket(self):
-        socket = Socket(self.app.hub, self.app.ctx, zmq.REQ)
+        socket = Socket(self.app.hub, self.app.context, zmq.REQ)
         socket.connect(self.app.config.BROKER_ENDPOINT)
         return socket
 
@@ -60,6 +60,9 @@ class Proxy(object):
 
     def __init__(self, ident):
         self.__client = self.app.MDPClient(ident)
+
+    def destruct(self):
+        self.__client.close()
 
     def __getattr__(self, name):
         client = self.__client

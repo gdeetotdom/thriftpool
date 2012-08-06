@@ -64,7 +64,7 @@ class Pool(LoopThread, SubclassMixin):
 
     def __init__(self, app, max_workers=None):
         super(Pool, self).__init__()
-        self.context = app.ctx
+        self.context = app.context
         self.poller = Poller()
         self.connections = {}
 

@@ -6,10 +6,10 @@ __all__ = ['Socket']
 
 class Socket(object):
 
-    def __init__(self, hub, ctx, socket_type):
+    def __init__(self, hub, context, socket_type):
         self._hub = hub
-        self._ctx = ctx
-        self._socket = self._ctx.socket(socket_type)
+        self._context = context
+        self._socket = self._context.socket(socket_type)
         self.__watcher = self.__writable = self.__readable = None
         self.__setup_events()
 

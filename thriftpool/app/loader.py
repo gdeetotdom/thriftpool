@@ -21,7 +21,7 @@ class Loader(object):
 
     def on_start(self):
         """Called before controller starts."""
-        self._config.update(BROKER_ENDPOINT='ipc://{0}'.format(mk_temp_path()))
+        self._config.update(BROKER_ENDPOINT='ipc://{0}'.format(mk_temp_path(prefix='broker')))
 
     def on_shutdown(self):
         """Called after controller shutdown."""

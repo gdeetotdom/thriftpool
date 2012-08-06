@@ -25,3 +25,6 @@ class ListenerController(NestedController):
         self.socket_zmq = socket_zmq
         self.pool = None
         super(ListenerController, self).__init__()
+
+    def on_shutdown(self):
+        self.socket_zmq.context.destroy()

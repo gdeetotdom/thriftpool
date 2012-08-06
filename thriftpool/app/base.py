@@ -30,7 +30,7 @@ class ThriftPool(SubclassMixin):
 
     def _after_fork(self, obj_):
         del self.hub
-        del self.ctx
+        del self.context
 
     @cached_property
     def Loader(self):
@@ -45,7 +45,7 @@ class ThriftPool(SubclassMixin):
         return self.loader.get_config()
 
     @cached_property
-    def ctx(self):
+    def context(self):
         return zmq.Context()
 
     @cached_property

@@ -18,7 +18,7 @@ class BaseService(Base):
 
     @cached_property
     def socket(self):
-        return Socket(self.app.hub, self.app.ctx, zmq.DEALER)
+        return Socket(self.app.hub, self.app.context, zmq.DEALER)
 
     def initialize(self):
         self.socket.connect(self.app.config.BROKER_ENDPOINT)

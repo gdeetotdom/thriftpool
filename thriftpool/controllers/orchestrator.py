@@ -34,3 +34,4 @@ class OrchestratorController(Controller):
     def on_shutdown(self):
         self.app.loader.on_shutdown()
         self.app.hub.stop()
+        self.app.context.destroy()

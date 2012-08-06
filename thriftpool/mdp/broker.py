@@ -75,7 +75,7 @@ class Broker(Base, LogsMixin):
 
     @cached_property
     def socket(self):
-        return Socket(self.app.hub, self.app.ctx, zmq.ROUTER)
+        return Socket(self.app.hub, self.app.context, zmq.ROUTER)
 
     def initialize(self):
         self.socket.bind(self.app.config.BROKER_ENDPOINT)
