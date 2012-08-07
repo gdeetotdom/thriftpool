@@ -6,8 +6,6 @@ import sys
 
 __all__ = ['Logging']
 
-DEFAULT_LOG_FMT = """[%(asctime)s %(levelname)s/%(processName)s] %(message)s"""
-
 
 def isatty(stream):
     return hasattr(stream, 'isatty') and stream.isatty()
@@ -28,8 +26,8 @@ class Logging(object):
 
     def __init__(self):
         self.logfile = None
-        self.loglevel = logging.DEBUG
-        self.format = DEFAULT_LOG_FMT
+        self.loglevel = self.app.config.LOGGING_LEVEL
+        self.format = self.app.config.DEFAULT_LOG_FMT
 
     def redirect_stdouts_to_logger(self, logger, loglevel=None,
             stdout=True, stderr=True):

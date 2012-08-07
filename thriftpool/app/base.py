@@ -1,28 +1,72 @@
+"""Main factory for this library. Single entry point for all application."""
+
 from billiard.util import register_after_fork
+import zmq
+
+from thriftpool.app.config import Configuration
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
-import zmq
 
 __all__ = ['ThriftPool']
 
 
 class ThriftPool(SubclassMixin):
+    """Main entry point for this application."""
+
+    #: Default loader for this application. Must provide configuration
+    #: for it.
+    loader_cls = 'thriftpool.app.loader:Loader'
 
     def __init__(self):
+        # we must delete some entries after work
         register_after_fork(self, self._after_fork)
         super(ThriftPool, self).__init__()
 
-    def finalize(self):
-        self.config = self.loader.get_config()
-        self.slots = self.loader.get_slots()
+    def _after_fork(self, obj_):
+        del self.hub
+        del self.context
+
+    @cached_property
+    def Loader(self):
+        """"""
+        return self.subclass_with_self(self.loader_cls)
+
+    @cached_property
+    def loader(self):
+        return self.Loader()
 
     @cached_property
     def Logging(self):
+        """Create bounded logging initialize class from :class:`.log.Logging`.
+        We will call :meth:`.log.Logging.setup` on finalization to setup
+        logging.
+
+        """
         return self.subclass_with_self('thriftpool.app.log:Logging')
 
     @cached_property
     def log(self):
+        """Instantiate logging initializer from bounded class."""
         return self.Logging()
+
+    @cached_property
+    def SlotsRepository(self):
+        """Create bounded slots repository from :class:`.slots:Repository`."""
+        return self.subclass_with_self('thriftpool.app.slots:Repository')
+
+    @cached_property
+    def config(self):
+        """Empty application configuration."""
+        return Configuration(self.loader.get_config())
+
+    @cached_property
+    def slots(self):
+        """Create repository of service slots. By default it is empty."""
+        return self.SlotsRepository(self.config)
+
+    def finalize(self):
+        """Make some steps before application startup."""
+        self.log.setup()
 
     @cached_property
     def Hub(self):
@@ -31,26 +75,6 @@ class ThriftPool(SubclassMixin):
     @cached_property
     def hub(self):
         return self.Hub()
-
-    def _after_fork(self, obj_):
-        del self.hub
-        del self.context
-
-    @cached_property
-    def Loader(self):
-        return self.subclass_with_self('thriftpool.app.loader:Loader')
-
-    @cached_property
-    def loader(self):
-        return self.Loader()
-
-    @cached_property
-    def config(self):
-        return {}
-
-    @cached_property
-    def slots(self):
-        return []
 
     @cached_property
     def context(self):

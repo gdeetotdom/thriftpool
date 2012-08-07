@@ -8,8 +8,9 @@ This file was copied and adapted from celery.
 """
 from __future__ import absolute_import
 from collections import defaultdict
+import itertools
 
-__all__ = ['DependencyGraph', 'AttributeDict']
+__all__ = ['DependencyGraph', 'AttributeDict', 'AggregatedView']
 
 
 class DependencyGraph(object):
@@ -211,3 +212,45 @@ class AttributeDictMixin(object):
 class AttributeDict(dict, AttributeDictMixin):
     """Dict subclass with attribute access."""
     pass
+
+
+class AggregatedView(AttributeDictMixin):
+    """Combine multiple dictionary to one."""
+
+    def __init__(self, d):
+        changes = {}
+        self.__dict__.update(_changes=changes,
+                             _underlying_dicts=[changes, d])
+
+    def add_default(self, d):
+        self._underlying_dicts.insert(2, d)
+
+    def __getitem__(self, key):
+        for d in self._underlying_dicts:
+            try:
+                return d[key]
+            except KeyError:
+                pass
+        raise KeyError(key)
+
+    def __setitem__(self, key, value):
+        self._changes[key] = value
+
+    def __contains__(self, key):
+        for d in self._underlying_dicts:
+            if key in d:
+                return True
+        return False
+
+    def __iter__(self):
+        return iter(set(itertools.chain.from_iterable(
+                        [self._changes] + self._underlying_dicts)))
+
+    def items(self):
+        return [(key, self[key]) for key in self]
+
+    def keys(self):
+        return list(self)
+
+    def __repr__(self):
+        return repr(dict(self.items()))
