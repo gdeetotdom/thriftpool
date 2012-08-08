@@ -1,8 +1,6 @@
 .project
 *.so
 *.pyc
-*.c
-*.cpp
 .pydevproject
 *.prof
 *.png
