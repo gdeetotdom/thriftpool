@@ -112,7 +112,7 @@ def get_extra_requires():
 
 # Package data
 
-package_data = {'thriftpool.utils': ['*.pxd', '*.pyx']}
+package_data = {'thriftpool.utils': ['*.pyx']}
 
 
 setup(name='thriftpool',
