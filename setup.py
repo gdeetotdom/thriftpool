@@ -118,6 +118,5 @@ setup(name='thriftpool',
       package_data=package_data,
       requires=install_requires + get_extra_requires(),
       ext_modules=get_ext_modules(),
-      zip_safe=False,
       **extra_setup_args()
 )
