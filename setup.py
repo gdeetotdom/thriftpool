@@ -1,4 +1,4 @@
-from distutils.core import setup, Extension
+from setuptools import setup, find_packages, Extension
 import os
 import re
 import sys
@@ -71,17 +71,21 @@ finally:
     meta_fh.close()
 
 
+# Describe existed entry points
+
+entrypoints = {}
+entrypoints['console_scripts'] = [
+    'thriftpool = thriftpool.bin.orchestrator:main',
+]
+
+
 # Extensions definition
 
 ext_modules = ["thriftpool.utils.exceptions"]
 
 
 def get_ext_modules():
-    if cython_installed:
-        source_extension = ".pyx"
-    else:
-        source_extension = ".c"
-
+    source_extension = ".c"
     result = []
     for module in ext_modules:
         module_source = os.path.sep.join(module.split(".")) + source_extension
@@ -104,7 +108,7 @@ def get_extra_requires():
 
 # Package data
 
-package_data = {'thriftpool.utils': ['*.pyx']}
+package_data = {'thriftpool.utils': ['*.pyx', '*.c']}
 
 
 setup(name='thriftpool',
@@ -114,9 +118,11 @@ setup(name='thriftpool',
       author_email=meta['contact'],
       url=meta['homepage'],
       license='BSD',
-      packages=['thriftpool'],
+      packages=find_packages(),
       package_data=package_data,
-      requires=install_requires + get_extra_requires(),
+      install_requires=install_requires + get_extra_requires(),
       ext_modules=get_ext_modules(),
+      entry_points=entrypoints,
+      zip_safe=False,
       **extra_setup_args()
 )
