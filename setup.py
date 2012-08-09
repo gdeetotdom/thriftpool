@@ -98,6 +98,7 @@ def get_ext_modules():
         ))
     return result
 
+
 # External library definition
 
 install_requires = ['thrift']
@@ -109,6 +110,11 @@ def get_extra_requires():
     return []
 
 
+# Package data
+
+package_data = {'thriftpool.utils': ['*.pxd', '*.pyx']}
+
+
 setup(name='thriftpool',
       version=meta['VERSION'],
       description=meta['doc'],
@@ -117,6 +123,7 @@ setup(name='thriftpool',
       url=meta['homepage'],
       license='BSD',
       packages=find_packages(),
+      package_data=package_data,
       install_requires=install_requires + get_extra_requires(),
       ext_modules=get_ext_modules(),
       entry_points=entrypoints,
