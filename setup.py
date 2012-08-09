@@ -34,9 +34,6 @@ def extra_setup_args():
 
 # Description, version and other meta information.
 
-long_description = open('README.rst').read().decode('utf-8')
-
-
 re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')
 re_vers = re.compile(r'VERSION\s*=\s*\((.*?)\)')
 re_doc = re.compile(r'^"""(.+?)"""')
@@ -123,6 +120,5 @@ setup(name='thriftpool',
       install_requires=install_requires + get_extra_requires(),
       ext_modules=get_ext_modules(),
       entry_points=entrypoints,
-      long_description=long_description,
       **extra_setup_args()
 )
