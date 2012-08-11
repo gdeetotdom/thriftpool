@@ -2,7 +2,6 @@
 from collections import namedtuple
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.imports import symbol_by_name
-from thriftpool.utils.other import mk_temp_path
 
 __all__ = ['Repository']
 
@@ -31,7 +30,7 @@ class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
         return self.Handler()
 
 
-class Slot(namedtuple('Slot', 'name listener service backend')):
+class Slot(namedtuple('Slot', 'name listener service')):
     """Combine service and listener together."""
 
 
@@ -44,6 +43,4 @@ class Repository(set):
                             backlog=opts.get('backlog', 1024))
         service = ThriftService(processor_cls=processor_cls,
                                 handler_cls=handler_cls)
-        backend = 'ipc://{0}'.format(mk_temp_path(prefix='slot'))
-        self.add(Slot(name, listener, service, backend))
-
+        self.add(Slot(name, listener, service))

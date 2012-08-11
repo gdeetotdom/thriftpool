@@ -61,7 +61,7 @@ class Controller(LogsMixin):
 
     def on_shutdown(self):
         self.app.hub.stop()
-        self.app.context.destroy()
+        self.app.context.term()
 
     def start(self):
         self._state = self.RUNNING

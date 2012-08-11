@@ -20,11 +20,12 @@ class WorkerController(Controller):
 
     Namespace = WorkerNamespace
 
-    def __init__(self):
+    def __init__(self, backend_endpoint):
         self.pool = None
+        self.backend_endpoint = backend_endpoint
         super(WorkerController, self).__init__()
 
     def after_start(self):
         for slot in self.app.slots:
-            self.pool.register(slot.name, slot.service, slot.backend)
+            self.pool.register(slot.name, slot.service.processor)
         super(WorkerController, self).after_start()
