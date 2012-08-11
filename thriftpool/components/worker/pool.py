@@ -10,6 +10,7 @@ from thriftpool.utils.threads import LoopThread
 from zmq.core.poll import Poller
 import logging
 import zmq
+from thriftpool.utils.logs import LogsMixin
 
 __all__ = ['PoolComponent']
 
@@ -59,11 +60,11 @@ class Connection(object):
         self.socket.close()
 
 
-class Pool(LoopThread, SubclassMixin):
+class Hub(LoopThread, SubclassMixin):
     """Maintain pool of thrift service."""
 
     def __init__(self, app, max_workers=None):
-        super(Pool, self).__init__()
+        super(Hub, self).__init__()
         self.app = app
         self.poller = Poller()
         self.connections = {}
@@ -78,7 +79,6 @@ class Pool(LoopThread, SubclassMixin):
 
     def loop(self):
         for socket, state in self.poller.poll(RCVTIMEO):
-
             connection = self.connections[socket]
             try:
                 connection.process()
@@ -94,6 +94,26 @@ class Pool(LoopThread, SubclassMixin):
     def register(self, backend, processor):
         connection = self.Connection(backend, processor)
         self.connections[connection.socket] = connection
+
+
+class Pool(LogsMixin):
+    """Maintain pool of hub threads."""
+
+    def __init__(self, app, threads=10):
+        self.hubs = [Hub(app) for i in xrange(threads)]
+
+    def start(self):
+        for hub in self.hubs:
+            hub.start()
+
+    def stop(self):
+        for hub in self.hubs:
+            hub.stop()
+
+    def register(self, name, service, backend):
+        self._info("Start processing service '%s'.", name)
+        for hub in self.hubs:
+            hub.register(backend, service.processor)
 
 
 class PoolComponent(StartStopComponent):

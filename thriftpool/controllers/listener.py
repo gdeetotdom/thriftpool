@@ -33,7 +33,11 @@ class ListenerController(Controller):
 
     def after_start(self):
         for slot in self.app.slots:
-            self.pool.register(self.socket_zmq.Listener(slot.listener, slot.backend))
+            listener = self.socket_zmq.Listener(
+                (slot.listener.host, slot.listener.port or 0),
+                backend=slot.backend, backlog=slot.listener.backlog
+            )
+            self.pool.register(slot.name, listener)
         super(ListenerController, self).after_start()
 
     def on_shutdown(self):

@@ -26,5 +26,5 @@ class WorkerController(Controller):
 
     def after_start(self):
         for slot in self.app.slots:
-            self.pool.register(slot.backend, slot.service.processor)
+            self.pool.register(slot.name, slot.service, slot.backend)
         super(WorkerController, self).after_start()

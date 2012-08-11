@@ -10,9 +10,6 @@ __all__ = ['Repository']
 class Listener(namedtuple('Listener', 'host port backlog')):
     """Specify which port we should listen."""
 
-    def __init__(self, host, port, backlog):
-        super(Listener, self).__init__(host, int(port), backlog)
-
 
 class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
     """Describe service information."""
@@ -34,18 +31,19 @@ class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
         return self.Handler()
 
 
-class Slot(object):
+class Slot(namedtuple('Slot', 'name listener service backend')):
     """Combine service and listener together."""
-
-    def __init__(self, listener, service):
-        self.listener = listener
-        self.service = service
-        self.backend = 'ipc://{0}'.format(mk_temp_path(prefix='slot'))
 
 
 class Repository(set):
     """Store existed slots."""
 
-    def __init__(self, config):
-        super(Repository, self).__init__()
+    def register(self, name, processor_cls, handler_cls, **opts):
+        listener = Listener(host=opts.get('host', '0.0.0.0'),
+                            port=opts.get('port'),
+                            backlog=opts.get('backlog', 1024))
+        service = ThriftService(processor_cls=processor_cls,
+                                handler_cls=handler_cls)
+        backend = 'ipc://{0}'.format(mk_temp_path(prefix='slot'))
+        self.add(Slot(name, listener, service, backend))
 

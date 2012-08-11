@@ -9,7 +9,12 @@ class Loader(object):
     app = None
 
     def get_config(self):
-        return {}
+        return {
+            'SLOTS': [dict(processor_cls='thriftpool.remote.ThriftPool:Processor',
+                           handler_cls='thriftpool.remote.ThriftPool:Iface',
+                           name='ThriftPool',
+                           port=51061)]
+        }
 
     def on_before_init(self):
         pass

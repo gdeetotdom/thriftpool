@@ -62,10 +62,14 @@ class ThriftPool(SubclassMixin):
     @cached_property
     def slots(self):
         """Create repository of service slots. By default it is empty."""
-        return self.SlotsRepository(self.config)
+        return self.SlotsRepository()
 
     def finalize(self):
         """Make some steps before application startup."""
+        # Register existed services.
+        for params in self.config.SLOTS:
+            self.slots.register(**params)
+        # Setup logging for whole application.
         self.log.setup()
 
     @cached_property
