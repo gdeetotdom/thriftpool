@@ -128,12 +128,12 @@ class Controller(LogsMixin):
 
     def stop(self):
         """Graceful shutdown of the worker server."""
-        self._debug('Stop controller!')
+        self._debug('Try to stop controller!')
         self._shutdown(warm=True)
 
     def terminate(self):
         """Not so graceful shutdown of the worker server."""
-        self._debug('Terminate controller!')
+        self._debug('Try to terminate controller!')
         self._shutdown(warm=False)
 
 

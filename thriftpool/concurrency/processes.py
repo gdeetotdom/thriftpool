@@ -7,18 +7,22 @@ import time
 
 from billiard import Process as _Process
 from billiard.common import restart_state
-from billiard.pool import LaxBoundedSemaphore, EX_OK, WorkersJoined
+from billiard.pool import LaxBoundedSemaphore, EX_OK
 from billiard.exceptions import RestartFreqExceeded
 from zope.interface import implementer
 
 from thriftpool.concurrency.base import IPoolController
-from thriftpool.utils.other import setproctitle
+from thriftpool.utils.other import setproctitle, camelcase_to_underscore
 from thriftpool.utils.threads import LoopThread
 from thriftpool.utils.signals import signals
+from thriftpool.utils.logs import LogsMixin
 
 __all__ = ['ProcessPoolController']
 
 logger = getLogger(__name__)
+
+RUNNING = 0x1
+TERMINATING = 0x2
 
 
 class Process(_Process):
@@ -31,7 +35,7 @@ class Process(_Process):
 
     def run(self):
         # Change process title.
-        setproctitle('[{0.name}]'.format(self))
+        setproctitle('[{0}]'.format(camelcase_to_underscore(self.name)))
 
         # Register signals.
         signals['SIGINT'] = lambda signum, frame: self.controller.stop()
@@ -70,6 +74,7 @@ class Supervisor(LoopThread):
 
     def loop(self):
         pool = self.pool
+
         try:
             # Keep maintaining workers.
             pool._maintain_pool()
@@ -82,7 +87,7 @@ class Supervisor(LoopThread):
 
 
 @implementer(IPoolController)
-class ProcessPoolController(object):
+class ProcessPoolController(LogsMixin):
     """Spawn and maintain worker pool. Based on :class:`billiard.pool.Pool`."""
 
     Process = Process
@@ -96,12 +101,16 @@ class ProcessPoolController(object):
         self.restart_state = restart_state(5, 1)
         self._putlock = LaxBoundedSemaphore(self._processes)
         self._supervisor = self.Supervisor(self)
+        self.state = None
 
     def _create_worker_process(self):
-        p = self.Process(self._queue.popleft(), self._next_number.next())
-        self._pool.append(p)
-        p.daemon = True
-        p.start()
+        controller = self._queue.popleft()
+        process = self.Process(controller, self._next_number.next())
+        self._pool.append(process)
+        process.daemon = True
+        process.start()
+        self._debug('Process #%d that serve "%s" started.',
+                    process.ident, type(process.controller).__name__)
 
     def _join_exited_workers(self, shutdown=False):
         """Cleanup after any worker processes which have exited due to
@@ -110,17 +119,26 @@ class ProcessPoolController(object):
 
         """
         if shutdown and not self._pool:
-            raise WorkersJoined()
+            return []
 
         cleaned, exitcodes = [], {}
         for i, process in enumerate(self._pool):
             if process.exitcode is not None:
-                # worker exited
+                # We have critical error. Process exited with non-zero code.
+                if process.exitcode != 0:
+                    self._critical('Process #%d that serve "%s" exited with code %d.',
+                                   process.ident, type(process.controller).__name__,
+                                   process.exitcode)
+
+                # Join exited process.
                 process.join()
                 cleaned.append(process.pid)
                 exitcodes[process.pid] = process.exitcode
-                self._queue.appendleft(process.controller)
                 del self._pool[i]
+
+                # Re-queue given controller after fail.
+                if self.state == RUNNING:
+                    self._queue.appendleft(process.controller)
 
         if cleaned:
             for pid in cleaned:
@@ -134,6 +152,8 @@ class ProcessPoolController(object):
         for use after reaping workers which have exited.
 
         """
+        if self.state != RUNNING:
+            return
         for i in xrange(self._processes - len(self._pool)):
             try:
                 if exitcodes and exitcodes[i] != EX_OK:
@@ -162,6 +182,7 @@ class ProcessPoolController(object):
                 self._putlock.grow()
 
     def start(self):
+        self.state = RUNNING
         self._supervisor.start()
         for i in xrange(self._processes):
             self._create_worker_process()
@@ -170,18 +191,25 @@ class ProcessPoolController(object):
         self._putlock.clear()
         for process in self._pool:
             process.terminate()
+        self._join_exited_workers(True)
 
     def join(self):
         for worker in self._pool:
             worker.join()
 
     def stop(self):
+        self.state = TERMINATING
+
+        # Stop process supervisor.
         self._supervisor.stop()
+
+        # Send signal to stop running processes and wait until that shutdown.
         self.close()
         self.join()
 
         # Prevent loops.
         self._supervisor = None
+        self.state = None
 
     def register(self, controller):
         self._queue.append(controller)

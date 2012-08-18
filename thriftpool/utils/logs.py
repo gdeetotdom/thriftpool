@@ -34,6 +34,9 @@ class LogsMixin(object):
     def _exception(self, exc):
         self._logger.exception(exc)
 
+    def _critical(self, msg, *args, **kwargs):
+        self._logger.critical(self._logger_prefix + msg, *args, **kwargs)
+
     def _error(self, msg, *args, **kwargs):
         self._logger.error(self._logger_prefix + msg, *args, **kwargs)
 

@@ -1,6 +1,6 @@
 from .base import Base
 from collections import namedtuple
-from thriftpool.utils.dispatcher import Signal
+from thriftpool.utils.dispatch import Signal
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.socket import Socket

@@ -3,6 +3,7 @@ from logging import getLogger
 from thriftpool.components.base import Namespace
 from thriftpool.controllers.base import Controller
 from thriftpool.utils.other import mk_temp_path, setproctitle, cpu_count
+import socket
 
 __all__ = ['OrchestratorController']
 
@@ -35,7 +36,7 @@ class OrchestratorController(Controller):
         super(OrchestratorController, self).on_before_init()
 
     def on_start(self):
-        setproctitle('[{0}]'.format('Orchestrator'))
+        setproctitle('[{0}@{1}]'.format('orchestrator', socket.gethostname()))
         self.app.loader.on_start()
         super(OrchestratorController, self).on_start()
 
