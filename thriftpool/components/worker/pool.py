@@ -64,8 +64,9 @@ class Hub(LogsMixin, LoopThread):
         out_prot = self.out_factory.getProtocol(out_transport)
 
         success = True
+        processor = self.pool.processors[request[0]]
         try:
-            self.pool.processors[request[0]].process(in_prot, out_prot)
+            processor.process(in_prot, out_prot)
         except Exception, exc:
             self._exception(exc)
             success = False
@@ -103,7 +104,7 @@ class Pool(LogsMixin, SubclassMixin):
         self._foreach(lambda hub: hub.stop())
 
     def register(self, name, processor):
-        self._info("Start processing service '%s'.", name)
+        self._info("Start service '%s'.", name)
         self.processors[name] = processor
 
 

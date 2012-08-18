@@ -1,5 +1,6 @@
 """Implement service repository."""
 from collections import namedtuple
+from thriftpool.handlers import ProcessorMixin, HandlerMeta
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.imports import symbol_by_name
 
@@ -14,20 +15,26 @@ class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
     """Describe service information."""
 
     @cached_property
-    def Processor(self):
-        return symbol_by_name(self.processor_cls)
-
-    @cached_property
     def Handler(self):
-        return symbol_by_name(self.handler_cls)
-
-    @cached_property
-    def processor(self):
-        return self.Processor(self.handler)
+        """Recreate handler class."""
+        cls = symbol_by_name(self.handler_cls)
+        return HandlerMeta(cls.__name__, cls.__bases__, dict(cls.__dict__))
 
     @cached_property
     def handler(self):
+        """Create handler instance."""
         return self.Handler()
+
+    @cached_property
+    def Processor(self):
+        """Create safe processor."""
+        cls = symbol_by_name(self.processor_cls)
+        return type(cls.__name__, (ProcessorMixin, cls), dict())
+
+    @cached_property
+    def processor(self):
+        """Create processor instance."""
+        return self.Processor(self.handler)
 
 
 class Slot(namedtuple('Slot', 'name listener service')):

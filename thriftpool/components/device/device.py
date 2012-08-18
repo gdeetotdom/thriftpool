@@ -15,15 +15,15 @@ logger = logging.getLogger(__name__)
 class DeviceContainer(LogsMixin, DaemonThread):
     """Run device in separate thread."""
 
-    def __init__(self, socket_zmq, frontend, backend):
-        self.socket_zmq = socket_zmq
+    def __init__(self, app, frontend, backend):
+        self.app = app
         self.frontend = frontend
         self.backend = backend
         super(DeviceContainer, self).__init__()
 
     @property
     def context(self):
-        return self.socket_zmq.context
+        return self.app.context
 
     @cached_property
     def frontend_socket(self):
@@ -52,9 +52,9 @@ class DeviceContainer(LogsMixin, DaemonThread):
 
 class DeviceComponent(StartStopComponent):
 
-    name = 'listener.device'
+    name = 'device.device'
 
     def create(self, parent):
-        return DeviceContainer(parent.socket_zmq,
+        return DeviceContainer(parent.app,
                                parent.frontend_endpoint,
                                parent.backend_endpoint)

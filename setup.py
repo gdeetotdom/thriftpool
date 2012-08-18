@@ -95,17 +95,6 @@ def get_ext_modules():
     return result
 
 
-# External library definition
-
-install_requires = ['thrift']
-
-
-def get_extra_requires():
-    if not zmq_installed:
-        return ['pyzmq-static']
-    return []
-
-
 # Package data
 
 package_data = {'thriftpool.utils': ['*.pyx', '*.c']}
@@ -120,7 +109,7 @@ setup(name='thriftpool',
       license='BSD',
       packages=find_packages(),
       package_data=package_data,
-      install_requires=install_requires + get_extra_requires(),
+      install_requires=['thrift', 'pyzmq'],
       ext_modules=get_ext_modules(),
       entry_points=entrypoints,
       zip_safe=False,

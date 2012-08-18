@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from logging import getLogger
 from socket_zmq.app import SocketZMQ
 from thriftpool.components.base import Namespace
-from thriftpool.controllers.base import Controller
+from thriftpool.controllers.base import NestedController
 from thriftpool.utils.functional import cached_property
 
 __all__ = ['ListenerController']
@@ -16,18 +16,16 @@ class ListenerNamespace(Namespace):
 
     def modules(self):
         return ['thriftpool.components.listener.event_loop',
-                'thriftpool.components.listener.device',
                 'thriftpool.components.listener.pool']
 
 
-class ListenerController(Controller):
+class ListenerController(NestedController):
 
     Namespace = ListenerNamespace
 
-    def __init__(self, frontend_endpoint, backend_endpoint):
+    def __init__(self, frontend_endpoint):
         self.pool = None
         self.frontend_endpoint = frontend_endpoint
-        self.backend_endpoint = backend_endpoint
         super(ListenerController, self).__init__()
 
     @cached_property

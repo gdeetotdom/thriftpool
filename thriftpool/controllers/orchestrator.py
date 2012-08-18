@@ -2,8 +2,7 @@ from __future__ import absolute_import
 from logging import getLogger
 from thriftpool.components.base import Namespace
 from thriftpool.controllers.base import Controller
-from thriftpool.utils.other import mk_temp_path
-from thriftpool.utils.proctitle import setproctitle
+from thriftpool.utils.other import mk_temp_path, setproctitle, cpu_count
 
 __all__ = ['OrchestratorController']
 
@@ -17,7 +16,6 @@ class OrchestratorNamespace(Namespace):
     def modules(self):
         return ['thriftpool.components.orchestrator.broker',
                 'thriftpool.components.orchestrator.pool',
-                'thriftpool.components.orchestrator.supervisor',
                 'thriftpool.components.orchestrator.mediator']
 
 
@@ -27,8 +25,8 @@ class OrchestratorController(Controller):
 
     def __init__(self):
         self.pool = None
-        self.frontend_endpoint = 'inproc://{0}'.format(id(self))
-        self.backend_endpoint = 'ipc://{0}'.format(mk_temp_path(prefix='slot'))
+        self.frontend_endpoint = 'ipc://{0}'.format(mk_temp_path(prefix='frontend'))
+        self.backend_endpoint = 'ipc://{0}'.format(mk_temp_path(prefix='backend'))
         super(OrchestratorController, self).__init__()
 
     def on_before_init(self):
@@ -46,9 +44,10 @@ class OrchestratorController(Controller):
         super(OrchestratorController, self).on_shutdown()
 
     def after_start(self):
-        self.pool.register(self.app.ListenerController(self.frontend_endpoint,
-                                                       self.backend_endpoint))
-        for i in xrange(2):
+        self.pool.register(self.app.DeviceController(self.frontend_endpoint,
+                                                     self.backend_endpoint))
+        self.pool.register(self.app.ListenerController(self.frontend_endpoint))
+        for i in xrange(cpu_count()):
             self.pool.register(self.app.WorkerController(self.backend_endpoint))
         super(OrchestratorController, self).after_start()
 

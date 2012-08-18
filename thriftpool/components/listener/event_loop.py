@@ -13,11 +13,14 @@ class EventLoopContainer(object):
         self.loop = loop
         self._on_stop = self.loop.async(lambda *args: None)
         self._on_stop.start()
-        self.thread = SimpleDaemonThread(target=self.loop.start,
+        self.thread = SimpleDaemonThread(target=self.run,
                                          name='EventLoop')
 
     def start(self):
         self.thread.start()
+
+    def run(self):
+        self.loop.start()
 
     @in_loop
     def _shutdown(self):

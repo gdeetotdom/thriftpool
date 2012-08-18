@@ -11,7 +11,7 @@ class Loader(object):
     def get_config(self):
         return {
             'SLOTS': [dict(processor_cls='thriftpool.remote.ThriftPool:Processor',
-                           handler_cls='thriftpool.remote.ThriftPool:Iface',
+                           handler_cls='thriftpool.remote.handler:Handler',
                            name='ThriftPool',
                            port=51061)]
         }

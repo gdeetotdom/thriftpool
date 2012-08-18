@@ -55,7 +55,7 @@ class Mediator(LogsMixin):
 class MediatorComponent(StartStopComponent):
 
     name = 'orchestrator.mediator'
-    requires = ('broker', 'pool', 'supervisor')
+    requires = ('broker', 'pool')
 
     def __init__(self, parent, **kwargs):
         parent.mediator = None

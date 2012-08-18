@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from logging import getLogger
 from thriftpool.components.base import Namespace
-from thriftpool.controllers.base import Controller
+from thriftpool.controllers.base import NestedController
 
 __all__ = ['WorkerController']
 
@@ -16,7 +16,7 @@ class WorkerNamespace(Namespace):
         return ['thriftpool.components.worker.pool']
 
 
-class WorkerController(Controller):
+class WorkerController(NestedController):
 
     Namespace = WorkerNamespace
 

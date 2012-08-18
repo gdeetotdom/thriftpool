@@ -35,7 +35,7 @@ class PoolContainer(LogsMixin):
 class PoolComponent(StartStopComponent):
 
     name = 'listener.pool'
-    requires = ('event_loop', 'device')
+    requires = ('event_loop',)
 
     def create(self, parent):
         pool = parent.pool = PoolContainer()

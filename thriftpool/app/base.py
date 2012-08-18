@@ -1,11 +1,12 @@
 """Main factory for this library. Single entry point for all application."""
-
 from billiard.util import register_after_fork
 import zmq
 
 from thriftpool.app.config import Configuration
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
+from thriftpool.utils.imports import symbol_by_name
+from thriftpool.utils.other import cpu_count
 
 __all__ = ['ThriftPool']
 
@@ -16,6 +17,9 @@ class ThriftPool(SubclassMixin):
     #: Default loader for this application. Must provide configuration
     #: for it.
     loader_cls = 'thriftpool.app.loader:Loader'
+
+    #: Default pool controller class.
+    pool_controller_cls = 'thriftpool.concurrency.processes.ProcessPoolController'
 
     def __init__(self):
         # we must delete some entries after work
@@ -82,7 +86,7 @@ class ThriftPool(SubclassMixin):
 
     @cached_property
     def context(self):
-        return zmq.Context()
+        return zmq.Context(cpu_count())
 
     @cached_property
     def OrchestratorController(self):
@@ -105,6 +109,10 @@ class ThriftPool(SubclassMixin):
         return self.subclass_with_self('thriftpool.controllers.worker:WorkerController')
 
     @cached_property
+    def DeviceController(self):
+        return self.subclass_with_self('thriftpool.controllers.device:DeviceController')
+
+    @cached_property
     def MDPBroker(self):
         return self.subclass_with_self('thriftpool.mdp.broker:Broker')
 
@@ -119,3 +127,7 @@ class ThriftPool(SubclassMixin):
     @cached_property
     def MDPProxy(self):
         return self.subclass_with_self('thriftpool.mdp.client:Proxy')
+
+    @cached_property
+    def PoolController(self):
+        return symbol_by_name(self.pool_controller_cls)
