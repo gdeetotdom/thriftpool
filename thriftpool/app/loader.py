@@ -17,10 +17,15 @@ class Loader(object):
         }
 
     def on_before_init(self):
+        """Called before controller initialization."""
         pass
 
     def on_start(self):
-        """Called before controller starts."""
+        """Called before controller start."""
+        pass
+
+    def after_start(self):
+        """Called after controller start."""
         pass
 
     def on_shutdown(self):

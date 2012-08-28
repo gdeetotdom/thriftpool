@@ -52,4 +52,6 @@ class OrchestratorController(Controller):
             self.listener_pool.register(slot.name, slot.listener.host,
                                         slot.listener.port, slot.listener.backlog)
             self.worker_pool.register(slot.name, slot.service.processor)
+        # Call hooks.
+        self.app.loader.after_start()
         super(OrchestratorController, self).after_start()

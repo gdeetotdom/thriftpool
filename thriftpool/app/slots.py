@@ -47,7 +47,7 @@ class Repository(set):
     def register(self, name, processor_cls, handler_cls, **opts):
         listener = Listener(host=opts.get('host', '0.0.0.0'),
                             port=opts.get('port'),
-                            backlog=opts.get('backlog', 1024))
+                            backlog=opts.get('backlog'))
         service = ThriftService(processor_cls=processor_cls,
                                 handler_cls=handler_cls)
         self.add(Slot(name, listener, service))
