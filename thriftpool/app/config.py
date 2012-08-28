@@ -1,5 +1,4 @@
 from thriftpool.utils.functional import cached_property
-from thriftpool.utils.other import mk_temp_path
 from thriftpool.utils.structures import AggregatedView
 import logging
 
@@ -22,5 +21,9 @@ class Configuration(AggregatedView):
         self.add_default(DEFAULT_SETTINGS)
 
     @cached_property
-    def BROKER_ENDPOINT(self):
-        return 'ipc://{0}'.format(mk_temp_path(prefix='broker'))
+    def FRONTEND_ENDPOINT(self):
+        return 'inproc://frontend{0}'.format(id(self))
+
+    @cached_property
+    def BACKEND_ENDPOINT(self):
+        return 'inproc://backend{0}'.format(id(self))

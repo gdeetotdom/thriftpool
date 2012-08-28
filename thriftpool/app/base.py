@@ -1,12 +1,13 @@
 """Main factory for this library. Single entry point for all application."""
 from billiard.util import register_after_fork
+import pyev
 import zmq
 
 from thriftpool.app.config import Configuration
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
-from thriftpool.utils.imports import symbol_by_name
 from thriftpool.utils.other import cpu_count
+from socket_zmq.app import SocketZMQ
 
 __all__ = ['ThriftPool']
 
@@ -18,17 +19,15 @@ class ThriftPool(SubclassMixin):
     #: for it.
     loader_cls = 'thriftpool.app.loader:Loader'
 
-    #: Default pool controller class.
-    pool_controller_cls = 'thriftpool.concurrency.processes.ProcessPoolController'
-
     def __init__(self):
         # we must delete some entries after work
         register_after_fork(self, self._after_fork)
         super(ThriftPool, self).__init__()
 
     def _after_fork(self, obj_):
-        del self.hub
+        del self.socket_zmq
         del self.context
+        del self.loop
 
     @cached_property
     def Loader(self):
@@ -77,16 +76,19 @@ class ThriftPool(SubclassMixin):
         self.log.setup()
 
     @cached_property
-    def Hub(self):
-        return self.subclass_with_self('thriftpool.app.hub:Hub')
-
-    @cached_property
-    def hub(self):
-        return self.Hub()
-
-    @cached_property
     def context(self):
         return zmq.Context(cpu_count())
+
+    @cached_property
+    def loop(self):
+        return pyev.Loop(debug=self.config.DEBUG)
+
+    @cached_property
+    def socket_zmq(self):
+        return SocketZMQ(context=self.context,
+                         loop=self.loop,
+                         frontend_endpoint=self.config.FRONTEND_ENDPOINT,
+                         backend_endpoint=self.config.BACKEND_ENDPOINT)
 
     @cached_property
     def OrchestratorController(self):
@@ -95,39 +97,3 @@ class ThriftPool(SubclassMixin):
     @cached_property
     def orchestrator(self):
         return self.OrchestratorController()
-
-    @cached_property
-    def CartridgeController(self):
-        return self.subclass_with_self('thriftpool.controllers.cartridge:CartridgeController')
-
-    @cached_property
-    def ListenerController(self):
-        return self.subclass_with_self('thriftpool.controllers.listener:ListenerController')
-
-    @cached_property
-    def WorkerController(self):
-        return self.subclass_with_self('thriftpool.controllers.worker:WorkerController')
-
-    @cached_property
-    def DeviceController(self):
-        return self.subclass_with_self('thriftpool.controllers.device:DeviceController')
-
-    @cached_property
-    def MDPBroker(self):
-        return self.subclass_with_self('thriftpool.mdp.broker:Broker')
-
-    @cached_property
-    def MDPService(self):
-        return self.subclass_with_self('thriftpool.mdp.service:Service')
-
-    @cached_property
-    def MDPClient(self):
-        return self.subclass_with_self('thriftpool.mdp.client:Client')
-
-    @cached_property
-    def MDPProxy(self):
-        return self.subclass_with_self('thriftpool.mdp.client:Proxy')
-
-    @cached_property
-    def PoolController(self):
-        return symbol_by_name(self.pool_controller_cls)

@@ -1,9 +1,11 @@
 from __future__ import absolute_import
+
 from logging import getLogger
+import socket
+
 from thriftpool.components.base import Namespace
 from thriftpool.controllers.base import Controller
-from thriftpool.utils.other import mk_temp_path, setproctitle, cpu_count
-import socket
+from thriftpool.utils.other import setproctitle
 
 __all__ = ['OrchestratorController']
 
@@ -15,9 +17,10 @@ class OrchestratorNamespace(Namespace):
     name = 'orchestrator'
 
     def modules(self):
-        return ['thriftpool.components.orchestrator.broker',
-                'thriftpool.components.orchestrator.pool',
-                'thriftpool.components.orchestrator.mediator']
+        return ['thriftpool.components.device',
+                'thriftpool.components.event_loop',
+                'thriftpool.components.listener_pool',
+                'thriftpool.components.worker_pool']
 
 
 class OrchestratorController(Controller):
@@ -25,9 +28,7 @@ class OrchestratorController(Controller):
     Namespace = OrchestratorNamespace
 
     def __init__(self):
-        self.pool = None
-        self.frontend_endpoint = 'ipc://{0}'.format(mk_temp_path(prefix='frontend'))
-        self.backend_endpoint = 'ipc://{0}'.format(mk_temp_path(prefix='backend'))
+        self.listener_pool = self.worker_pool = None
         super(OrchestratorController, self).__init__()
 
     def on_before_init(self):
@@ -36,7 +37,6 @@ class OrchestratorController(Controller):
         super(OrchestratorController, self).on_before_init()
 
     def on_start(self):
-        setproctitle('[{0}@{1}]'.format('orchestrator', socket.gethostname()))
         self.app.loader.on_start()
         super(OrchestratorController, self).on_start()
 
@@ -45,10 +45,11 @@ class OrchestratorController(Controller):
         super(OrchestratorController, self).on_shutdown()
 
     def after_start(self):
-        self.pool.register(self.app.DeviceController(self.frontend_endpoint,
-                                                     self.backend_endpoint))
-        self.pool.register(self.app.ListenerController(self.frontend_endpoint))
-        for i in xrange(cpu_count()):
-            self.pool.register(self.app.WorkerController(self.backend_endpoint))
+        # Set process title.
+        setproctitle('[{0}@{1}]'.format('orchestrator', socket.gethostname()))
+        # Register all listeners and services.
+        for slot in self.app.slots:
+            self.listener_pool.register(slot.name, slot.listener.host,
+                                        slot.listener.port, slot.listener.backlog)
+            self.worker_pool.register(slot.name, slot.service.processor)
         super(OrchestratorController, self).after_start()
-

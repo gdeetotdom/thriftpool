@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, find_packages
 import os
 import re
 import sys
@@ -7,29 +7,6 @@ import sys
 
 if sys.version_info < (2, 7):
     raise Exception('ThriftPool requires Python 2.7.')
-
-
-# Which modules already present?
-
-try:
-    import Cython
-    cython_installed = True
-except ImportError:
-    cython_installed = False
-
-try:
-    import zmq
-    zmq_installed = True
-except ImportError:
-    zmq_installed = False
-
-
-def extra_setup_args():
-    result = {}
-    if cython_installed:
-        from Cython.Distutils import build_ext
-        result['cmdclass'] = {'build_ext': build_ext}
-    return result
 
 
 # Description, version and other meta information.
@@ -79,27 +56,6 @@ entrypoints['console_scripts'] = [
 ]
 
 
-# Extensions definition
-
-ext_modules = ["thriftpool.utils.exceptions"]
-
-
-def get_ext_modules():
-    source_extension = ".c"
-    result = []
-    for module in ext_modules:
-        module_source = os.path.sep.join(module.split(".")) + source_extension
-        result.append(Extension(
-            module, sources=[module_source],
-        ))
-    return result
-
-
-# Package data
-
-package_data = {'thriftpool.utils': ['*.pyx', '*.c']}
-
-
 setup(name='thriftpool',
       version=meta['VERSION'],
       description=meta['doc'],
@@ -108,10 +64,7 @@ setup(name='thriftpool',
       url=meta['homepage'],
       license='BSD',
       packages=find_packages(),
-      package_data=package_data,
-      install_requires=['thrift', 'pyzmq'],
-      ext_modules=get_ext_modules(),
+      install_requires=['thrift', 'pyzmq', 'socket_zmq'],
       entry_points=entrypoints,
-      zip_safe=False,
-      **extra_setup_args()
+      zip_safe=False
 )

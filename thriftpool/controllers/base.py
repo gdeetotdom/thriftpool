@@ -17,7 +17,7 @@ from thriftpool.utils.imports import qualname
 from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.signals import signals
 
-__all__ = ['Controller', 'NestedController']
+__all__ = ['Controller']
 
 logger = getLogger(__name__)
 
@@ -135,13 +135,3 @@ class Controller(LogsMixin):
         """Not so graceful shutdown of the worker server."""
         self._debug('Try to terminate controller!')
         self._shutdown(warm=False)
-
-
-class NestedController(Controller):
-    """Controller that did not catch any signal. Can be used inside other
-    controller.
-
-    """
-
-    wait_for_shutdown = True
-    register_signals = False
