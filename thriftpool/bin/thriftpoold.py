@@ -1,7 +1,10 @@
 from __future__ import absolute_import
-from billiard import freeze_support
-from thriftpool.app.base import ThriftPool
+
 import sys
+
+from billiard import freeze_support
+
+from thriftpool.app.base import ThriftPool
 
 
 def main():

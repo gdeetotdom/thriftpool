@@ -31,12 +31,12 @@ while elapsed < delta:
     iterations *= 2
 
     t = _timer()
-    #transport.open()
+    transport.open()
     for i in xrange(iterations):
-        transport.open()
+        #transport.open()
         client.ping()
-        transport.close()
-    #transport.close()
+        #transport.close()
+    transport.close()
     elapsed = _timer() - t
 
 print iterations, 'objects passed through connection in', elapsed, 'seconds'
