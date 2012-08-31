@@ -6,17 +6,15 @@ This file was copied and adapted from celery.
 :license: BSD, see LICENSE for more details.
 
 """
-from .encoding import smart_str
-from .functional import cached_property
-from .term import colored
-from billiard.process import current_process
 import inspect
 import logging
 import sys
 import threading
 import traceback
 
-__all__ = ['LogsMixin', 'ColorFormatter', 'ProcessAwareLogger', 'LoggingProxy']
+from .encoding import smart_str
+from .functional import cached_property
+from .term import colored
 
 
 class LogsMixin(object):
@@ -72,14 +70,6 @@ class ColorFormatter(logging.Formatter):
             record.msg = smart_str(color(record.msg))
 
         return smart_str(logging.Formatter.format(self, record))
-
-
-class ProcessAwareLogger(logging.Logger):
-
-    def makeRecord(self, *args, **kwds):
-        record = logging.Logger.makeRecord(self, *args, **kwds)
-        record.processName = current_process()._name
-        return record
 
 
 class LoggingProxy(object):

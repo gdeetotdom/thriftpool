@@ -17,8 +17,7 @@ class OrchestratorNamespace(Namespace):
     name = 'orchestrator'
 
     def modules(self):
-        return ['thriftpool.components.device',
-                'thriftpool.components.event_loop',
+        return ['thriftpool.components.event_loop',
                 'thriftpool.components.listener_pool',
                 'thriftpool.components.worker_pool']
 
@@ -47,11 +46,6 @@ class OrchestratorController(Controller):
     def after_start(self):
         # Set process title.
         setproctitle('[{0}@{1}]'.format('orchestrator', socket.gethostname()))
-        # Register all listeners and services.
-        for slot in self.app.slots:
-            self.listener_pool.register(slot.name, slot.listener.host,
-                                        slot.listener.port, slot.listener.backlog)
-            self.worker_pool.register(slot.name, slot.service.processor)
         # Call hooks.
         self.app.loader.after_start()
         super(OrchestratorController, self).after_start()

@@ -30,7 +30,7 @@ class EventLoopProxy(object):
 class EventLoopComponent(StartStopComponent):
 
     name = 'orchestrator.event_loop'
-    requiries = ('device',)
+    requiries = ('worker_pool',)
 
     def create(self, parent):
         return EventLoopProxy(parent.app)

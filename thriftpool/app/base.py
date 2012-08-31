@@ -6,7 +6,6 @@ import zmq
 from thriftpool.app.config import Configuration
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
-from thriftpool.utils.other import cpu_count
 from socket_zmq.app import SocketZMQ
 
 __all__ = ['ThriftPool']
@@ -77,7 +76,7 @@ class ThriftPool(SubclassMixin):
 
     @cached_property
     def context(self):
-        return zmq.Context(cpu_count())
+        return zmq.Context()
 
     @cached_property
     def loop(self):
@@ -85,10 +84,7 @@ class ThriftPool(SubclassMixin):
 
     @cached_property
     def socket_zmq(self):
-        return SocketZMQ(context=self.context,
-                         loop=self.loop,
-                         frontend_endpoint=self.config.FRONTEND_ENDPOINT,
-                         backend_endpoint=self.config.BACKEND_ENDPOINT)
+        return SocketZMQ(context=self.context, loop=self.loop)
 
     @cached_property
     def OrchestratorController(self):

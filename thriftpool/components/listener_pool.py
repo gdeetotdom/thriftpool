@@ -22,7 +22,8 @@ class ListenerPool(LogsMixin):
         return self.app.socket_zmq.Listener
 
     def start(self):
-        pass
+        for listener in self.pool:
+            listener.start()
 
     def stop(self):
         while self.pool:
@@ -34,9 +35,8 @@ class ListenerPool(LogsMixin):
     def register(self, name, host, port, backlog=None):
         listener = self.Listener(name, (host, port or 0), backlog=backlog)
         self.pool.append(listener)
-        self._info("Starting listening on '%s:%d', service '%s'.",
+        self._info("Register listener on '%s:%d' for service '%s'.",
                    listener.host, listener.port, listener.name)
-        listener.start()
 
 
 class ListenerPoolComponent(StartStopComponent):
@@ -46,4 +46,7 @@ class ListenerPoolComponent(StartStopComponent):
 
     def create(self, parent):
         listener_pool = parent.listener_pool = ListenerPool(parent.app)
+        for slot in parent.app.slots:
+            listener_pool.register(slot.name, slot.listener.host,
+                                   slot.listener.port, slot.listener.backlog)
         return listener_pool

@@ -1,12 +1,12 @@
 from functools import wraps
 from logging.handlers import WatchedFileHandler
-from thriftpool.signals import handler_method_guarded
-from thriftpool.utils.logs import (ColorFormatter, ProcessAwareLogger,
-    LoggingProxy)
-from thriftpool.utils.term import colored
 import logging
 import sys
 import time
+
+from thriftpool.signals import handler_method_guarded
+from thriftpool.utils.logs import ColorFormatter, LoggingProxy
+from thriftpool.utils.term import colored
 
 if sys.platform == "win32":
     # On Windows, the best timer is time.clock()
@@ -20,14 +20,6 @@ __all__ = ['Logging']
 
 def isatty(stream):
     return hasattr(stream, 'isatty') and stream.isatty()
-
-
-def ensure_process_aware():
-    logging._acquireLock()
-    try:
-        logging.setLoggerClass(ProcessAwareLogger)
-    finally:
-        logging._releaseLock()
 
 
 class Logging(object):
@@ -110,7 +102,6 @@ class Logging(object):
         return decorator
 
     def setup(self):
-        ensure_process_aware()
         root = logging.getLogger()
         root.setLevel(self.loglevel)
         self.setup_handlers(root, self.logfile, self.format)

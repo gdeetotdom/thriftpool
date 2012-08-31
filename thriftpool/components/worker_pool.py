@@ -17,6 +17,14 @@ class WorkerContainer(DaemonThread):
         self.worker = worker
         super(WorkerContainer, self).__init__()
 
+    @property
+    def endpoint(self):
+        return self.worker.worker_endpoint
+
+    def start(self):
+        super(WorkerContainer, self).start()
+        self.worker.wait()
+
     def body(self):
         self.worker.start()
 
@@ -30,9 +38,10 @@ class WorkerPool(LogsMixin, SubclassMixin):
 
     WorkerContainer = WorkerContainer
 
-    def __init__(self, app):
+    def __init__(self, app, count=None):
         self.app = app
         self.processors = {}
+        self.worker_count = count or 10
         super(WorkerPool, self).__init__()
 
     @property
@@ -40,17 +49,21 @@ class WorkerPool(LogsMixin, SubclassMixin):
         return self.app.socket_zmq.Worker
 
     @cached_property
-    def _hubs(self):
+    def _containers(self):
         return [self.WorkerContainer(self.Worker(self.processors))
-                for i in xrange(10)]
+                for i in xrange(self.worker_count)]
+
+    @property
+    def endpoints(self):
+        return [container.endpoint for container in self._containers]
 
     def start(self):
-        for hub in self._hubs:
-            hub.start()
+        for container in self._containers:
+            container.start()
 
     def stop(self):
-        for hub in self._hubs:
-            hub.stop()
+        for container in self._containers:
+            container.stop()
 
     def register(self, name, processor):
         self._info("Register service '%s'.", name)
@@ -59,9 +72,10 @@ class WorkerPool(LogsMixin, SubclassMixin):
 
 class WorkerPoolComponent(StartStopComponent):
 
-    name = 'orchestrator.pool'
-    requires = ('device',)
+    name = 'orchestrator.worker_pool'
 
     def create(self, parent):
         worker_pool = parent.worker_pool = WorkerPool(parent.app)
+        for slot in parent.app.slots:
+            worker_pool.register(slot.name, slot.service.processor)
         return worker_pool
