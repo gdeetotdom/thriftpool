@@ -1,19 +1,11 @@
-from functools import wraps
+"""Configure logging subsystem."""
 from logging.handlers import WatchedFileHandler
 import logging
 import sys
-import time
 
-from thriftpool.signals import handler_method_guarded
 from thriftpool.utils.logs import ColorFormatter, LoggingProxy
 from thriftpool.utils.term import colored
-
-if sys.platform == "win32":
-    # On Windows, the best timer is time.clock()
-    default_timer = time.clock
-else:
-    # On most other platforms the best timer is time.time()
-    default_timer = time.time
+from thriftpool.utils.debug import RequestLogger
 
 __all__ = ['Logging']
 
@@ -78,28 +70,9 @@ class Logging(object):
 
     def setup_request_logging(self):
         """Setup system to log requests."""
-        self.request_logger = logging.getLogger('thriftpool.requests')
-
-    def decorate_request(self, signal, sender, fn):
-        """Decorate every method to log requests."""
-        method_name = "{0}::{1}".format(sender.__name__, fn.__name__)
-
-        def decorator(func):
-            @wraps(func)
-            def inner(*args, **kwargs):
-                start = default_timer()
-                result = func(*args, **kwargs)
-                duration = default_timer() - start
-                took = ('{:.3f} ms'.format(duration * 1000)
-                        if duration < 0.001
-                        else '{:.3f} s'.format(duration))
-                self.request_logger.info("[%s] took %s",
-                                         self.colored.green(method_name),
-                                         took)
-                return result
-            return inner
-
-        return decorator
+        logger = logging.getLogger('thriftpool.requests')
+        self.request_logger = RequestLogger(logger, self.colored)
+        self.request_logger.setup()
 
     def setup(self):
         root = logging.getLogger()
@@ -108,5 +81,4 @@ class Logging(object):
         self.redirect_stdouts_to_logger(root)
         if self.app.config.LOG_REQUESTS:
             self.setup_request_logging()
-            handler_method_guarded.connect(self.decorate_request)
 

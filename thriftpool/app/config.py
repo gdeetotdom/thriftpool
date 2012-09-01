@@ -7,7 +7,7 @@ DEFAULT_SETTINGS = dict(
     DEBUG=True,
     DEFAULT_LOG_FMT="[%(asctime)s %(levelname)s] %(message)s",
     LOGGING_LEVEL=logging.DEBUG,
-    LOG_REQUESTS=False,
+    LOG_REQUESTS=True,
     SLOTS=[],
 )
 

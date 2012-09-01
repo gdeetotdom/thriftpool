@@ -1,0 +1,79 @@
+"""Some useful class for request logging."""
+from functools import wraps
+import time
+import sys
+import inspect
+import itertools
+from pprint import pformat
+
+from thriftpool.signals import handler_method_guarded
+
+if sys.platform == "win32":
+    # On Windows, the best timer is time.clock()
+    default_timer = time.clock
+else:
+    # On most other platforms the best timer is time.time()
+    default_timer = time.time
+
+
+NEW_REQUEST_MESSAGE = \
+"""{prefix} do {method_name} where
+    args = {args}
+    kwargs = {kwargs}"""
+
+SERVED_REQUEST_MESSAGE = \
+"""{prefix} return {result} ({took})"""
+
+
+def qualname(obj):
+    if not hasattr(obj, '__name__') and hasattr(obj, '__class__'):
+        return qualname(obj.__class__)
+
+    return '%s.%s' % (obj.__module__, obj.__name__)
+
+
+class RequestLogger(object):
+
+    def __init__(self, logger, colored):
+        self.logger = logger
+        self.colored = colored
+        self.counter = itertools.cycle(xrange(2 ** 16))
+
+    def setup(self):
+        handler_method_guarded.connect(self.decorate)
+
+    def decorate(self, signal, sender, fn):
+        method_name = "{0}.{1}".format(qualname(sender), fn.__name__)
+        method_args = inspect.getargspec(fn).args
+        blue = self.colored.blue
+        black = self.colored.black
+        magenta = self.colored.magenta
+
+        def decorator(func):
+            @wraps(func)
+            def inner(*args, **kwargs):
+                request = self.counter.next()
+                # Log incoming request.
+                self.logger.info(NEW_REQUEST_MESSAGE.format(
+                    prefix=magenta('In [{0}]:'.format(request)),
+                    method_name=blue(method_name),
+                    args=blue(pformat(dict(zip(method_args[:len(args)], args)))),
+                    kwargs=blue(pformat(kwargs))
+                ))
+                # Measure time.
+                start = default_timer()
+                result = func(*args, **kwargs)
+                duration = default_timer() - start
+                # Log response.
+                self.logger.info(SERVED_REQUEST_MESSAGE.format(
+                    prefix=black('Out [{0}]:'.format(request)),
+                    took='{:.4f} ms'.format(duration * 1000)
+                         if duration < 0.001
+                         else '{:.4f} s'.format(duration),
+                    result=blue(pformat(result)),
+                ))
+                return result
+            return inner
+
+        return decorator
+
