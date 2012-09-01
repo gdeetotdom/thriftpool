@@ -76,4 +76,3 @@ class RequestLogger(object):
             return inner
 
         return decorator
-
