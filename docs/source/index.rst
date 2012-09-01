@@ -3,14 +3,25 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to thriftpool's documentation!
-======================================
+ThriftPool
+==========
 
-Contents:
+`ThriftPool` is an application server for `Thrift`_ services. It should create needed
+sockets, start workers, serve requests from client and log them.
+
+.. _`Thrift`: http://thrift.apache.org/
+
+
+Reference Docs
+==============
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
+   install
+   basic_usage
+   implementation
+   api
 
 
 Indices and tables
@@ -20,3 +31,10 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+
+License
+=======
+
+`ThriftPool` is open source and licensed under `BSD License`_.
+
+.. _`BSD License`: http://www.opensource.org/licenses/BSD-3-Clause

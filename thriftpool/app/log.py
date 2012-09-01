@@ -66,7 +66,7 @@ class Logging(object):
 
     def setup_handlers(self, logger, logfile, format, formatter=ColorFormatter):
         """Register needed handlers for given logger. If ``logfile`` equal to 
-        :const:`None` use :attribute:`sys.stderr` as ``logfile``.
+        :const:`None` use :attr:`sys.stderr` as ``logfile``.
 
         """
         colorize = self.colorize(logfile)
