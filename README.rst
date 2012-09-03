@@ -9,13 +9,10 @@ sockets, start workers, serve requests from client and log them. It use `pyev`_ 
 wrapper for `libev`_ and `ØMQ`_ for load balancing between workers. Request processing
 written in `Cython`_.
 
-.. note:: Currently it support only Thrift Framed protocol.
-
 Key features:
-* Fast request processing (~4000 rps);
-* Compatibility with gevent through monkey patching;
-* Support request logging;
-
+- Fast request processing (~4000 rps);
+- Compatibility with gevent through monkey patching;
+- Support request logging.
 
 .. |cistatus| image:: https://secure.travis-ci.org/blackwithwhite666/thriftpool.png?branch=master
 .. _`Thrift`: http://thrift.apache.org/
