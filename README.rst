@@ -10,9 +10,10 @@ wrapper for `libev`_ and `ØMQ`_ for load balancing between workers. Request pro
 written in `Cython`_.
 
 Key features:
-- Fast request processing (~4000 rps);
-- Compatibility with gevent through monkey patching;
-- Support request logging.
+
+* Fast request processing (~4000 rps);
+* Compatibility with gevent through monkey patching;
+* Support request logging.
 
 .. |cistatus| image:: https://secure.travis-ci.org/blackwithwhite666/thriftpool.png?branch=master
 .. _`Thrift`: http://thrift.apache.org/
