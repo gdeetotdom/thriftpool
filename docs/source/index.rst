@@ -14,6 +14,7 @@ written in `Cython`_.
 .. note:: Currently it support only Thrift Framed protocol.
 
 Key features:
+
 * Fast request processing (~4000 rps);
 * Compatibility with gevent through monkey patching;
 * Support request logging;
