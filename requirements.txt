@@ -1,6 +1,6 @@
 thrift>=0.8.0
 cython>=0.16
 pyzmq>=2.2.0.1
-git+http://github.com/blackwithwhite666/pyev.git#egg=pyev
-git+http://github.com/blackwithwhite666/socket_zmq.git#egg=socket_zmq
+https://github.com/blackwithwhite666/pyev/tarball/master#egg=pyev
+https://github.com/blackwithwhite666/socket_zmq/tarball/master#egg=socket_zmq
 setproctitle>=1.1.6
