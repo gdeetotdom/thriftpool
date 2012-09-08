@@ -4,14 +4,10 @@ import logging
 import sys
 
 from thriftpool.utils.logs import ColorFormatter, LoggingProxy
-from thriftpool.utils.term import colored
+from thriftpool.utils.term import colored, isatty
 from thriftpool.utils.debug import RequestLogger
 
 __all__ = ['Logging']
-
-
-def isatty(stream):
-    return hasattr(stream, 'isatty') and stream.isatty()
 
 
 class Logging(object):

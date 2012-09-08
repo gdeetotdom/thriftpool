@@ -53,7 +53,7 @@ finally:
 entrypoints = {}
 entrypoints['console_scripts'] = [
     'thriftpoold = thriftpool.bin.thriftpoold:main',
-    'thriftpool = thriftpool.bin.thriftpool:main',
+    'thriftpoolctl = thriftpool.bin.thriftpoolctl:main',
 ]
 
 

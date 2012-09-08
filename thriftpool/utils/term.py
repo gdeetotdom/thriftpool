@@ -7,8 +7,10 @@
 
 """
 from __future__ import absolute_import
-from thriftpool.utils.encoding import smart_str
+
 import platform
+
+from thriftpool.utils.encoding import smart_str
 
 
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
@@ -19,6 +21,10 @@ fg = lambda s: COLOR_SEQ % s
 
 SYSTEM = platform.system()
 IS_WINDOWS = SYSTEM == 'Windows'
+
+
+def isatty(stream):
+    return hasattr(stream, 'isatty') and stream.isatty()
 
 
 class colored(object):

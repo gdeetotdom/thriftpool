@@ -17,6 +17,22 @@ from .functional import cached_property
 from .term import colored
 
 
+LOG_LEVELS = {
+    'DEBUG': logging.DEBUG,
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'ERROR': logging.ERROR,
+    'CRITICAL': logging.CRITICAL,
+    'FATAL': logging.FATAL,
+}
+
+
+def mlevel(level):
+    if level and not isinstance(level, int):
+        return LOG_LEVELS[level.upper()]
+    return level
+
+
 class LogsMixin(object):
     """Simple helper for logging."""
 
