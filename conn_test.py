@@ -13,7 +13,7 @@ else:
 host = "127.0.0.1"
 port = 51061
 
-delta = 5
+delta = 600
 
 
 # Init thrift connection and protocol handlers
@@ -31,12 +31,12 @@ while elapsed < delta:
     iterations *= 2
 
     t = _timer()
-    #transport.open()
+    transport.open()
     for i in xrange(iterations):
-        transport.open()
+        #transport.open()
         client.ping()
-        transport.close()
-    #transport.close()
+        #transport.close()
+    transport.close()
     elapsed = _timer() - t
 
 print iterations, 'objects passed through connection in', elapsed, 'seconds'
