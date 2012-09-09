@@ -86,6 +86,9 @@ class colored(object):
     def __str__(self):
         return smart_str(self.__unicode__())
 
+    def __len__(self):
+        return len(str(self))
+
     def node(self, s, op):
         return self.__class__(enabled=self.enabled, op=op, *s)
 

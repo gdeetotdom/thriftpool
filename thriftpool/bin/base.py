@@ -35,6 +35,9 @@ class Error(Exception):
 
 class BaseCommand(object):
 
+    #: Specify parser class.
+    Parser = argparse.ArgumentParser
+
     #: Specify options for this command.
     options = ()
 
@@ -90,14 +93,19 @@ class BaseCommand(object):
     @property
     def usage(self):
         """Returns the command-line usage string for this app."""
-        return '%%prog [options] {0.args}'.format(self)
+        return '%(prog)s [options] {0.args}'.format(self)
+
+    def parser_options(self):
+        """Additional parser options."""
+        return {}
 
     def create_parser(self, prog_name):
         """Create new parser."""
-        return argparse.ArgumentParser(description=self.description,
-                                       usage=self.usage,
-                                       version=self.version,
-                                       prog=prog_name)
+        return self.Parser(description=self.description,
+                           usage=self.usage,
+                           version=self.version,
+                           prog=prog_name,
+                           **self.parser_options())
 
     def prepare_parser(self, parser):
         """Prepare parser for work."""

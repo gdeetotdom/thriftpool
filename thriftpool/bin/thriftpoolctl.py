@@ -1,21 +1,58 @@
 from __future__ import absolute_import
 
+import argparse
+
 from thriftpool.bin.base import BaseCommand, Option
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.text import indent
+from thriftpool.utils.mixin import SubclassMixin
 
 
-class UmbrellaCommand(BaseCommand):
+class Formatter(argparse.HelpFormatter):
+    """Print list of commands with help."""
+
+    umbrella = None
+
+    def _metavar_formatter(self, action, default_metavar):
+        if action.choices is None:
+            return super(Formatter, self)._metavar_formatter(action, default_metavar)
+
+        white = self.umbrella.colored.white
+        parts = []
+        for name, parser in action.choices.items():
+            parts.append(indent('+ {0}: {1}'.format(white(name),
+                                                    parser.description), 2))
+        result = '\n' + '\n'.join(parts)
+
+        return lambda tuple_size: (result, ) * tuple_size
+
+
+class Parser(argparse.ArgumentParser):
+    """Overwrite default parser."""
+
+
+class UmbrellaCommand(BaseCommand, SubclassMixin):
     """Umbrella for all commands."""
+
+    #: Specify new parser.
+    Parser = Parser
 
     #: Dictionary that contains existed subcommands.
     subcommand_classes = {}
+
+    @cached_property
+    def Formatter(self):
+        """Create new :class:`Formatter` bounded to this class."""
+        return self.subclass_with_self(Formatter, attribute='umbrella')
 
     @cached_property
     def subcommands(self):
         """Initialize all subcommands."""
         return {name: cls(app=self.app) for name, cls
                 in self.subcommand_classes.items()}
+
+    def parser_options(self):
+        return dict(formatter_class=self.Formatter)
 
     def prepare_parser(self, parser):
         """Prepare parser for work."""
@@ -75,6 +112,10 @@ class list_slots(abstract):
         self.out('Registered slots:\n')
         for slot in self.app.slots:
             self.out(self.format_slot(slot) + '\n')
+
+
+class test(abstract):
+    """Do something."""
 
 
 def main():
