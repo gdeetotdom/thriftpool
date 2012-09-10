@@ -4,11 +4,16 @@ import sys
 import os
 import argparse
 import traceback
+import warnings
 
 import thriftpool
 from thriftpool.app.base import ThriftPool
 from thriftpool.utils.platforms import EX_FAILURE, EX_OK
 from thriftpool.utils.term import colored, isatty
+
+
+# always enable DeprecationWarnings, so our users can see them.
+warnings.simplefilter('once', Warning, 0)
 
 
 class Option(object):
@@ -103,12 +108,13 @@ class BaseCommand(object):
         """Create new parser."""
         return self.Parser(description=self.description,
                            usage=self.usage,
-                           version=self.version,
                            prog=prog_name,
                            **self.parser_options())
 
     def prepare_parser(self, parser):
         """Prepare parser for work."""
+        parser.add_argument('-v', '--version', action='version',
+                            version=self.version)
         for option in self.options:
             option.apply(parser)
         return parser

@@ -12,3 +12,7 @@ listener_started = Signal(providing_args=['listener', 'app'])
 
 #: Listener was stopped.
 listener_stopped = Signal(providing_args=['listener', 'app'])
+
+
+#: Called before loggers are configured.
+setup_logging = Signal(providing_args=['root', 'logfile'])

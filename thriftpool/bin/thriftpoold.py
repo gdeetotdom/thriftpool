@@ -19,6 +19,8 @@ class WorkerCommand(BaseCommand):
                     ' `INFO`, `WARNING`, `ERROR`, `CRITICAL`,'
                     ' or `FATAL`.',
                action='store', default='INFO'),
+        Option('-p', '--pid-file', help='Specify path to PID file',
+               action='store'),
     )
 
     def run(self, *args, **options):
@@ -28,7 +30,8 @@ class WorkerCommand(BaseCommand):
             self.die('Unknown level {0!r}. Please use one of {1}.'.format(
                         options['log_level'], '|'.join(LOG_LEVELS.keys())))
         self.app.config.LOG_REQUESTS = options.get('log_request', False)
-        self.app.orchestrator.start()
+        worker = self.app.Worker(pidfile=options.get('pid_file', None))
+        worker.start()
 
 
 def main():

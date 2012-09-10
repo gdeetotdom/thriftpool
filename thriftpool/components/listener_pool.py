@@ -33,6 +33,8 @@ class ListenerPool(LogsMixin):
         for listener in self.pool:
             listener.start()
             listener_started.send(self, listener=listener, app=self.app)
+            self._info("Starting listener on '%s:%d' for service '%s'.",
+                       listener.host, listener.port, listener.name)
 
     def stop(self):
         """Stop all registered listeners."""
@@ -46,8 +48,7 @@ class ListenerPool(LogsMixin):
         """Register new listener with given parameters."""
         listener = self.Listener(name, (host, port or 0), backlog=backlog)
         self.pool.append(listener)
-        self._info("Register listener on '%s:%d' for service '%s'.",
-                   listener.host, listener.port, listener.name)
+        self._info("Register listener for service '%s'.", listener.name)
 
 
 class ListenerPoolComponent(StartStopComponent):

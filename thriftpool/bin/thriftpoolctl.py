@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import argparse
 
 from thriftpool.bin.base import BaseCommand, Option
+from thriftpool.bin.thriftpoold import WorkerCommand
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.text import indent
 from thriftpool.utils.mixin import SubclassMixin
@@ -114,8 +115,8 @@ class list_slots(abstract):
             self.out(self.format_slot(slot) + '\n')
 
 
-class test(abstract):
-    """Do something."""
+class worker(abstract, WorkerCommand):
+    """Run worker daemon. Same as `thriftpoold`."""
 
 
 def main():

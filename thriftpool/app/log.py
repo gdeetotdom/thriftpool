@@ -3,6 +3,7 @@ from logging.handlers import WatchedFileHandler
 import logging
 import sys
 
+from thriftpool.signals import setup_logging
 from thriftpool.utils.logs import ColorFormatter, LoggingProxy
 from thriftpool.utils.term import colored, isatty
 from thriftpool.utils.debug import RequestLogger
@@ -73,8 +74,12 @@ class Logging(object):
     def setup(self):
         root = logging.getLogger()
         root.setLevel(self.loglevel)
-        self.setup_handlers(root, self.logfile, self.format)
-        self.redirect_stdouts_to_logger(root)
+        receivers = setup_logging.send(sender=None, root=root,
+                                       logfile=self.logfile)
+        if not receivers:
+            self.setup_handlers(root, self.logfile, self.format)
+        logger = logging.getLogger('thriftpool.stdout')
+        self.redirect_stdouts_to_logger(logger)
         if self.app.config.LOG_REQUESTS:
             self.setup_request_logging()
 

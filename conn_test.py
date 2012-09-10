@@ -13,7 +13,7 @@ else:
 host = "127.0.0.1"
 port = 51061
 
-delta = 600
+delta = 1
 
 
 # Init thrift connection and protocol handlers

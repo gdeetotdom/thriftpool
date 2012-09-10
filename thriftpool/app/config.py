@@ -9,6 +9,7 @@ DEFAULT_SETTINGS = dict(
     LOGGING_LEVEL=logging.DEBUG,
     LOG_REQUESTS=False,
     SLOTS=[],
+    PROCESS_NAME='thriftpool',
 )
 
 

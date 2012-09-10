@@ -1,11 +1,9 @@
 from __future__ import absolute_import
 
 from logging import getLogger
-import socket
 
 from thriftpool.components.base import Namespace
 from thriftpool.controllers.base import Controller
-from thriftpool.utils.other import setproctitle
 
 __all__ = ['OrchestratorController']
 
@@ -44,8 +42,6 @@ class OrchestratorController(Controller):
         super(OrchestratorController, self).on_shutdown()
 
     def after_start(self):
-        # Set process title.
-        setproctitle('[{0}@{1}]'.format('orchestrator', socket.gethostname()))
         # Call hooks.
         self.app.loader.after_start()
         super(OrchestratorController, self).after_start()

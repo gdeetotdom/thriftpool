@@ -91,5 +91,9 @@ class ThriftPool(SubclassMixin):
         return self.subclass_with_self('thriftpool.controllers.orchestrator:OrchestratorController')
 
     @cached_property
-    def orchestrator(self):
-        return self.OrchestratorController()
+    def Worker(self):
+        return self.subclass_with_self('thriftpool.app.worker:Worker')
+
+    def register(self, **options):
+        """Register new handler."""
+        pass
