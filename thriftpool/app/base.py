@@ -1,4 +1,6 @@
 """Main factory for this library. Single entry point for all application."""
+import inspect
+
 from billiard.util import register_after_fork
 import pyev
 import zmq
@@ -6,7 +8,10 @@ import zmq
 from thriftpool.app.config import Configuration
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
+from thriftpool.exceptions import RegistrationError
 from socket_zmq.app import SocketZMQ
+
+from ._state import set_current_app
 
 __all__ = ['ThriftPool']
 
@@ -23,19 +28,28 @@ class ThriftPool(SubclassMixin):
         register_after_fork(self, self._after_fork)
         super(ThriftPool, self).__init__()
 
+        # set current application as default
+        set_current_app(self)
+
     def _after_fork(self, obj_):
+        # Reset all resources after fork."
         del self.socket_zmq
         del self.context
         del self.loop
 
     @cached_property
     def Loader(self):
-        """"""
+        """Default loader class."""
         return self.subclass_with_self(self.loader_cls)
 
     @cached_property
     def loader(self):
         return self.Loader()
+
+    @cached_property
+    def config(self):
+        """Empty application configuration."""
+        return Configuration(self.loader.get_config())
 
     @cached_property
     def Logging(self):
@@ -52,27 +66,24 @@ class ThriftPool(SubclassMixin):
         return self.Logging()
 
     @cached_property
-    def SlotsRepository(self):
+    def Repository(self):
         """Create bounded slots repository from :class:`.slots:Repository`."""
         return self.subclass_with_self('thriftpool.app.slots:Repository')
 
     @cached_property
-    def config(self):
-        """Empty application configuration."""
-        return Configuration(self.loader.get_config())
-
-    @cached_property
     def slots(self):
         """Create repository of service slots. By default it is empty."""
-        return self.SlotsRepository()
+        return self.Repository()
 
     def finalize(self):
         """Make some steps before application startup."""
+        # Setup logging for whole application.
+        self.log.setup()
+        # Load all needed modules.
+        self.loader.preload_modules()
         # Register existed services.
         for params in self.config.SLOTS:
             self.slots.register(**params)
-        # Setup logging for whole application.
-        self.log.setup()
 
     @cached_property
     def context(self):
@@ -94,6 +105,28 @@ class ThriftPool(SubclassMixin):
     def Worker(self):
         return self.subclass_with_self('thriftpool.app.worker:Worker')
 
-    def register(self, **options):
+    def register(self, *args, **options):
         """Register new handler."""
-        pass
+
+        def inner_register_handler(**options):
+
+            def _register_handler(cls):
+                if not inspect.isclass(cls):
+                    raise RegistrationError('Object "{0!r}" is not a class'
+                                            .format(cls))
+                name = options.pop('name', cls.__name__)
+                processor = options.pop('processor', None)
+                if processor is None:
+                    raise RegistrationError('Processor for handler "{0}"'
+                                            ' not specified'.format(name))
+                self.slots.register(name=name,
+                                    handler_cls=cls,
+                                    processor_cls=processor,
+                                    **options)
+                return cls
+
+            return _register_handler
+
+        if len(args) == 1 and callable(args[0]):
+            return inner_register_handler(**options)(*args)
+        return inner_register_handler(**options)

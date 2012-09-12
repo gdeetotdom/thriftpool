@@ -11,7 +11,7 @@ written in `Cython`_.
 
 Key features:
 
-* Fast request processing (~4000 rps);
+* Fast request processing (~3500 rps);
 * Compatibility with gevent through monkey patching;
 * Support request logging.
 

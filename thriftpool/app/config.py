@@ -10,6 +10,7 @@ DEFAULT_SETTINGS = dict(
     LOG_REQUESTS=False,
     SLOTS=[],
     PROCESS_NAME='thriftpool',
+    MODULES=[],
 )
 
 

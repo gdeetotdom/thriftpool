@@ -103,8 +103,8 @@ class list_slots(abstract):
             'listen: {0}:{1}'.format(yellow(slot.listener.host),
                                      yellow(slot.listener.port or 0)),
             'backlog: {0}'.format(yellow(slot.listener.backlog)),
-            'processor: {0}'.format(yellow(slot.service.processor_cls)),
-            'handler: {0}'.format(yellow(slot.service.handler_cls)),
+            'processor: {0}'.format(yellow(slot.service.Processor)),
+            'handler: {0}'.format(yellow(slot.service.Handler)),
         )])
         return '\n'.join(parts).strip()
 

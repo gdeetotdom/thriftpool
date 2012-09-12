@@ -38,7 +38,8 @@ class Worker(object):
     def start(self):
         """Start new worker."""
         self.on_start()
-        self.pidlock = create_pidlock(self.pidfile)
+        if self.pidfile is not None:
+            self.pidlock = create_pidlock(self.pidfile)
         self.orchestrator.start()
 
     def on_exit(self):

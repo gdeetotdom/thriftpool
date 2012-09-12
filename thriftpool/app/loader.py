@@ -1,4 +1,6 @@
 """Contains initializer for application."""
+import importlib
+from itertools import chain
 
 __all__ = ['Loader']
 
@@ -8,13 +10,25 @@ class Loader(object):
 
     app = None
 
+    #: Specify modules that should be preloaded.
+    builtin_modules = ['thriftpool.remote.handler']
+
     def get_config(self):
-        return {
-            'SLOTS': [dict(processor_cls='thriftpool.remote.ThriftPool:Processor',
-                           handler_cls='thriftpool.remote.handler:Handler',
-                           name='ThriftPool',
-                           port=51061)]
-        }
+        """Return application configuration."""
+        return {}
+
+    def list_modules(self):
+        """List all known module names."""
+        for module_name in chain.from_iterable((self.builtin_modules,
+                                                self.app.config.MODULES)):
+            yield module_name
+
+    def import_module(self, module):
+        return importlib.import_module(module)
+
+    def preload_modules(self):
+        for module_name in self.list_modules():
+            self.import_module(module_name)
 
     def on_before_init(self):
         """Called before controller initialization."""

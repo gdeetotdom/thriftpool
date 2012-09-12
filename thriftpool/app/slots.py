@@ -18,7 +18,8 @@ class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
     def Handler(self):
         """Recreate handler class."""
         cls = symbol_by_name(self.handler_cls)
-        return HandlerMeta(cls.__name__, cls.__bases__, dict(cls.__dict__))
+        attrs = dict(cls.__dict__)
+        return HandlerMeta(cls.__name__, cls.__bases__, attrs)
 
     @cached_property
     def handler(self):
@@ -29,7 +30,8 @@ class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
     def Processor(self):
         """Create safe processor."""
         cls = symbol_by_name(self.processor_cls)
-        return type(cls.__name__, (ProcessorMixin, cls), dict())
+        attrs = dict(__module__=cls.__module__)
+        return type(cls.__name__, (ProcessorMixin, cls), attrs)
 
     @cached_property
     def processor(self):

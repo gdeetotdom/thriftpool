@@ -7,7 +7,6 @@ import traceback
 import warnings
 
 import thriftpool
-from thriftpool.app.base import ThriftPool
 from thriftpool.utils.platforms import EX_FAILURE, EX_OK
 from thriftpool.utils.term import colored, isatty
 
@@ -53,7 +52,7 @@ class BaseCommand(object):
     version = thriftpool.__version__
 
     def __init__(self, app=None, stdout=sys.stdout, stderr=sys.stderr):
-        self.app = ThriftPool() if app is None else app
+        self.app = thriftpool.thriftpool if app is None else app
         self.colored = colored(enabled=all([isatty(out) for out
                                             in (sys.stderr, sys.stdout)]))
         self.stdout = stdout

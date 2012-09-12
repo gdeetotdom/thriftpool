@@ -120,5 +120,6 @@ def create_pidlock(pidfile):
     try:
         pid.acquire()
     except LockFailed:
-        raise SystemExit("Error: Pidfile ({0}) exists.".format(pidfile))
+        raise SystemExit("Error: PID file ({0}) exists.".format(pidfile))
     atexit.register(pid.release)
+    return pid
