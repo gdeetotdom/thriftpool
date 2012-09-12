@@ -111,14 +111,17 @@ class ThriftPool(SubclassMixin):
         def inner_register_handler(**options):
 
             def _register_handler(cls):
+                # Check that handler is a class.
                 if not inspect.isclass(cls):
                     raise RegistrationError('Object "{0!r}" is not a class'
                                             .format(cls))
-                name = options.pop('name', cls.__name__)
+                # Get processor for handler.
                 processor = options.pop('processor', None)
                 if processor is None:
-                    raise RegistrationError('Processor for handler "{0}"'
-                                            ' not specified'.format(name))
+                    raise RegistrationError('Processor for handler "{0!r}"'
+                                            ' not specified'.format(cls))
+                # Detect name for handler.
+                name = options.pop('name', processor.__module__)
                 self.slots.register(name=name,
                                     handler_cls=cls,
                                     processor_cls=processor,

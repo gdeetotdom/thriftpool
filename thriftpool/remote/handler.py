@@ -3,8 +3,7 @@ from thriftpool.remote.ThriftPool import Processor
 from thriftpool import thriftpool
 
 
-@thriftpool.register(processor=Processor, name='ThriftPool',
-                     port=51061)
+@thriftpool.register(processor=Processor)
 class Handler(Iface):
 
     def ping(self):
