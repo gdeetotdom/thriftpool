@@ -3,12 +3,48 @@ from __future__ import absolute_import
 import os
 import errno
 import atexit
+import sys
+import resource
+from contextlib import contextmanager
 
 
 EX_OK = getattr(os, 'EX_OK', 0)
 EX_FAILURE = 1
 EX_UNAVAILABLE = getattr(os, 'EX_UNAVAILABLE', 69)
 EX_USAGE = getattr(os, 'EX_USAGE', 64)
+
+DAEMON_UMASK = 0
+DAEMON_WORKDIR = '/'
+
+
+def fileno(f):
+    try:
+        return f.fileno()
+    except AttributeError:
+        return f
+
+
+def get_fdmax(default=None):
+    """Returns the maximum number of open file descriptors
+    on this system.
+
+    :keyword default: Value returned if there's no file
+                      descriptor limit.
+
+    """
+    fdmax = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
+    if fdmax == resource.RLIM_INFINITY:
+        return default
+    return fdmax
+
+
+@contextmanager
+def ignore_EBADF():
+    try:
+        yield
+    except OSError as exc:
+        if exc.errno != errno.EBADF:
+            raise
 
 
 class LockFailed(Exception):
@@ -123,3 +159,65 @@ def create_pidlock(pidfile):
         raise SystemExit("Error: PID file ({0}) exists.".format(pidfile))
     atexit.register(pid.release)
     return pid
+
+
+class Daemon(object):
+    """Fork and close needed resources."""
+
+    _is_open = False
+    workdir = DAEMON_WORKDIR
+    umask = DAEMON_UMASK
+
+    def __init__(self, fake=False, excluded_fds=None):
+        self.fake = fake
+        self.standart_fds = (sys.stdin, sys.stdout, sys.stderr)
+        self.excluded_fds = tuple(excluded_fds or [])
+
+    @property
+    def preserved_fds(self):
+        return self.standart_fds + self.excluded_fds
+
+    def redirect_to_null(self, fd):
+        if fd:
+            dest = os.open(os.devnull, os.O_RDWR)
+            os.dup2(dest, fd)
+
+    def _detach(self):
+        if os.fork() == 0:      # first child
+            os.setsid()         # create new session
+            if os.fork() > 0:   # second child
+                os._exit(0)
+        else:
+            os._exit(0)
+        return self
+
+    def open(self):
+        if not self._is_open:
+            if not self.fake:
+                self._detach()
+
+            os.chdir(self.workdir)
+            os.umask(self.umask)
+
+            preserve = [fileno(f) for f in self.preserved_fds if fileno(f)]
+            for fd in reversed(range(get_fdmax(default=2048))):
+                if fd not in preserve:
+                    with ignore_EBADF():
+                        os.close(fd)
+
+            for fd in self.standart_fds:
+                self.redirect_to_null(fileno(fd))
+
+            self._is_open = True
+
+    def close(self, *args):
+        if self._is_open:
+            self._is_open = False
+
+
+def daemonize(fake=False, excluded_fds=None):
+    """Try to start daemon."""
+    daemon = Daemon(fake, excluded_fds)
+    daemon.open()
+    atexit.register(daemon.close)
+    return daemon

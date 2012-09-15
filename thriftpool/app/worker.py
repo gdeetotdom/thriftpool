@@ -6,8 +6,9 @@ import socket
 import os
 
 from thriftpool.utils.other import setproctitle
-from thriftpool.utils.platforms import create_pidlock
+from thriftpool.utils.platforms import create_pidlock, daemonize
 from thriftpool.utils.functional import cached_property
+from thriftpool.signals import collect_excluded_fds
 
 
 class Worker(object):
@@ -15,15 +16,21 @@ class Worker(object):
 
     app = None
 
-    def __init__(self, pidfile=None):
+    def __init__(self, pidfile=None, daemonize=False, foreground=False,
+                 args=None):
         self.pidfile = pidfile
         self.pidlock = None
+        self.daemonize = daemonize
+        self.foreground = foreground
+        self.daemon = None
+        self.args = list(args or [])
         atexit.register(self.on_exit)
 
     def change_process_titile(self):
         """Set process title."""
-        setproctitle('[{0}@{1}]'.format(self.app.config.PROCESS_NAME,
-                                        socket.gethostname()))
+        setproctitle('[{0}@{1}]{2}'.format(self.app.config.PROCESS_NAME,
+                                           socket.gethostname(),
+                                           ' '.join([''] + self.args)))
 
     @cached_property
     def orchestrator(self):
@@ -40,6 +47,11 @@ class Worker(object):
         self.on_start()
         if self.pidfile is not None:
             self.pidlock = create_pidlock(self.pidfile)
+        if self.daemonize:
+            receivers = collect_excluded_fds.send(sender=self)
+            excluded = [receiver[1] for receiver in receivers if receiver[1]]
+            excluded = [item for sublist in excluded for item in sublist]
+            self.daemon = daemonize(self.foreground, excluded_fds=excluded)
         self.orchestrator.start()
 
     def on_exit(self):

@@ -16,3 +16,7 @@ listener_stopped = Signal(providing_args=['listener', 'app'])
 
 #: Called before loggers are configured.
 setup_logging = Signal(providing_args=['root', 'logfile'])
+
+
+#: Collect file descriptors that must not be closed.
+collect_excluded_fds = Signal(providing_args=[])

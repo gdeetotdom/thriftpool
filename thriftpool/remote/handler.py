@@ -7,4 +7,4 @@ from thriftpool import thriftpool
 class Handler(Iface):
 
     def ping(self):
-        pass
+        raise

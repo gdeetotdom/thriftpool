@@ -11,7 +11,7 @@ else:
 
 
 host = "127.0.0.1"
-port = 51061
+port = 50395
 
 delta = 1
 

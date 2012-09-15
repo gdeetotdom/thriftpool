@@ -17,7 +17,7 @@ class Logging(object):
     app = None
 
     def __init__(self):
-        self.logfile = None
+        self.logfile = self.app.config.LOG_FILE
         self.loglevel = self.app.config.LOGGING_LEVEL
         self.format = self.app.config.DEFAULT_LOG_FMT
         self.colored = colored(enabled=self.colorize(self.logfile))
