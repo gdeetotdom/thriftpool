@@ -1,7 +1,6 @@
 """Main factory for this library. Single entry point for all application."""
 import inspect
 
-from billiard.util import register_after_fork
 import pyev
 import zmq
 
@@ -12,6 +11,11 @@ from thriftpool.exceptions import RegistrationError
 from socket_zmq.app import SocketZMQ
 
 from ._state import set_current_app
+
+try:
+    from billiard.util import register_after_fork
+except ImportError:
+    register_after_fork = lambda *args: None
 
 __all__ = ['ThriftPool']
 
