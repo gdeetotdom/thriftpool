@@ -25,7 +25,8 @@ def method_guard(cls, fn):
             # Catch all exceptions here, process they here. Write application
             # exception to thrift transport.
             logging.exception(exc)
-            raise TApplicationException(TApplicationException.INTERNAL_ERROR, str(exc))
+            raise TApplicationException(TApplicationException.INTERNAL_ERROR,
+                "({0}) {1}".format(type(exc).__name__, str(exc)))
 
     return inner
 

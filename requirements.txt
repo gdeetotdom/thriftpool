@@ -1,6 +1,0 @@
-thrift>=0.8.0
-cython>=0.16
-pyzmq>=2.2.0.1
-https://github.com/blackwithwhite666/pyev/tarball/master#egg=pyev
-https://github.com/blackwithwhite666/socket_zmq/tarball/master#egg=socket_zmq
-setproctitle>=1.1.6
