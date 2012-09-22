@@ -1,6 +1,5 @@
 pyzmq>=2.2.0
 pyev-static>=0.9.0
 thrift>=0.8.0
-https://github.com/blackwithwhite666/socket_zmq/tarball/master#egg=socket_zmq
+socket_zmq>=0.1.0
 setproctitle
-cython
