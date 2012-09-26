@@ -7,6 +7,7 @@ Taken from :class:`multiprocessing.util.Finalize`.
 
 """
 from __future__ import absolute_import
+
 from itertools import count
 import weakref
 

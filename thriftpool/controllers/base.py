@@ -8,8 +8,10 @@ This file was copied and adapted from celery.
 
 """
 from __future__ import absolute_import
+
 from logging import getLogger
 from threading import Event
+
 from thriftpool.components.base import Namespace
 from thriftpool.exceptions import SystemTerminate
 from thriftpool.utils.finalize import Finalize

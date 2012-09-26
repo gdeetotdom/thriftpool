@@ -1,10 +1,11 @@
+from __future__ import absolute_import
+
 import re
 
 try:
     from setproctitle import setproctitle
 except ImportError:
-    def setproctitle(title):
-        pass
+    setproctitle = lambda *args, **kwargs: None
 
 __all__ = ['setproctitle', 'camelcase_to_underscore']
 

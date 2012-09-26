@@ -7,6 +7,7 @@ This file was copied and adapted from celery.
 
 """
 from __future__ import absolute_import
+
 from collections import defaultdict
 import itertools
 

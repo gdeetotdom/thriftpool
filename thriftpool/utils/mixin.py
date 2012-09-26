@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from thriftpool.utils.imports import symbol_by_name
 from thriftpool.utils.other import rgetattr
 from thriftpool.app._state import current_app

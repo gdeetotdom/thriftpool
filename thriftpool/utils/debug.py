@@ -1,4 +1,6 @@
 """Some useful class for request logging."""
+from __future__ import absolute_import
+
 from functools import wraps
 import time
 import sys

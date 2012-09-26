@@ -6,6 +6,8 @@ This file was copied and adapted from celery.
 :license: BSD, see LICENSE for more details.
 
 """
+from __future__ import absolute_import
+
 import inspect
 import logging
 import sys

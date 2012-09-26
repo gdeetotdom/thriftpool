@@ -1,8 +1,12 @@
 """Implement service repository."""
+from __future__ import absolute_import
+
 from collections import namedtuple
-from thriftpool.handlers import ProcessorMixin, HandlerMeta
+
+from thriftpool.app.handlers import ProcessorMixin, WrappedHandlerMeta
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.imports import symbol_by_name
+from thriftpool.exceptions import RegistrationError
 
 __all__ = ['Repository']
 
@@ -17,14 +21,25 @@ class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
     @cached_property
     def Handler(self):
         """Recreate handler class."""
-        cls = symbol_by_name(self.handler_cls)
-        attrs = dict(cls.__dict__)
-        return HandlerMeta(cls.__name__, cls.__bases__, attrs)
+        return symbol_by_name(self.handler_cls)
 
     @cached_property
     def handler(self):
         """Create handler instance."""
         return self.Handler()
+
+    @cached_property
+    def WrappedHandler(self):
+        """Create wrapped handler instance."""
+        Handler = self.Handler
+        attrs = dict(_handler_cls=Handler)
+        name = 'Wrapped{0}'.format(Handler.__name__)
+        return WrappedHandlerMeta(name, (object, ), attrs)
+
+    @cached_property
+    def wrapped_handler(self):
+        """Create wrapped handler instance."""
+        return self.WrappedHandler(self.handler)
 
     @cached_property
     def Processor(self):
@@ -36,11 +51,14 @@ class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
     @cached_property
     def processor(self):
         """Create processor instance."""
-        return self.Processor(self.handler)
+        return self.Processor(self.wrapped_handler)
 
 
 class Slot(namedtuple('Slot', 'name listener service')):
     """Combine service and listener together."""
+
+    def __hash__(self):
+        return hash(self.__class__) ^ hash(self.name)
 
 
 class Repository(set):
@@ -52,4 +70,8 @@ class Repository(set):
                             backlog=opts.get('backlog'))
         service = ThriftService(processor_cls=processor_cls,
                                 handler_cls=handler_cls)
-        self.add(Slot(name, listener, service))
+        slot = Slot(name, listener, service)
+        if slot in self:
+            raise RegistrationError('Service {0!r} already present in'
+                                    ' repository'.format(name))
+        self.add(slot)

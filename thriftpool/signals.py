@@ -1,4 +1,6 @@
 """Specify signals sent when specific events happens."""
+from __future__ import absolute_import
+
 from thriftpool.utils.dispatch import Signal
 
 

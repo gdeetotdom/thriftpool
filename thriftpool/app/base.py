@@ -1,4 +1,6 @@
 """Main factory for this library. Single entry point for all application."""
+from __future__ import absolute_import
+
 import inspect
 
 import pyev

@@ -1,5 +1,8 @@
-from thriftpool.utils.structures import AggregatedView
+from __future__ import absolute_import
+
 import logging
+
+from thriftpool.utils.structures import AggregatedView
 
 __all__ = ['Configuration']
 

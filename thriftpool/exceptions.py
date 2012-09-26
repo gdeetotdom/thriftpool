@@ -9,3 +9,7 @@ class SystemTerminate(SystemExit):
 
 class RegistrationError(Exception):
     """Error happened on handler registration."""
+
+
+class WrappingError(Exception):
+    """Can't wrap given class."""

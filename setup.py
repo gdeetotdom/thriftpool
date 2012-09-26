@@ -55,6 +55,7 @@ entrypoints['console_scripts'] = [
     'thriftpoold = thriftpool.bin.thriftpoold:main',
     'thriftpool = thriftpool.bin.thriftpoolctl:main',
 ]
+entrypoints['thriftpool.modules'] = []
 
 
 setup(name='thriftpool',

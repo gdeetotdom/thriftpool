@@ -8,9 +8,11 @@ This file was copied and adapted from celery.
 
 """
 from __future__ import absolute_import
+
 from collections import defaultdict
 from importlib import import_module
 from logging import getLogger
+
 from thriftpool.utils.imports import instantiate
 from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.structures import DependencyGraph

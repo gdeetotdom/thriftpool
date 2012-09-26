@@ -1,4 +1,6 @@
 """Configure logging subsystem."""
+from __future__ import absolute_import
+
 from logging.handlers import WatchedFileHandler
 import logging
 import sys

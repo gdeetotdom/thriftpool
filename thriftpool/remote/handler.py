@@ -1,10 +1,13 @@
 from thriftpool.remote.ThriftPool import Iface
 from thriftpool.remote.ThriftPool import Processor
-from thriftpool import thriftpool
+from thriftpool.base import BaseHandler
 
 
-@thriftpool.register(processor=Processor, port=45000)
-class Handler(Iface):
+class Handler(BaseHandler, Iface):
+
+    class options:
+        processor = Processor
+        port = 45000
 
     def ping(self):
         pass
