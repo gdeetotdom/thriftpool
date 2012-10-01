@@ -15,6 +15,8 @@ DEFAULT_SETTINGS = dict(
     SLOTS=[],
     PROCESS_NAME='thriftpool',
     MODULES=[],
+    PROTOCOL_FACTORY_CLS='thrift.protocol.TBinaryProtocol'
+                         ':TBinaryProtocolAcceleratedFactory',
 )
 
 

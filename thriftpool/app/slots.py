@@ -15,8 +15,19 @@ class Listener(namedtuple('Listener', 'host port backlog')):
     """Specify which port we should listen."""
 
 
-class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
+class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls'
+                                                ' protocol_factory_cls')):
     """Describe service information."""
+
+    @cached_property
+    def ProtocolFactory(self):
+        """Recreate protocol factory class."""
+        return symbol_by_name(self.protocol_factory_cls)
+
+    @cached_property
+    def protocol_factory(self):
+        """Create handler instance."""
+        return self.ProtocolFactory()
 
     @cached_property
     def Handler(self):
@@ -64,12 +75,24 @@ class Slot(namedtuple('Slot', 'name listener service')):
 class Repository(set):
     """Store existed slots."""
 
+    app = None
+
+    Listener = Listener
+    Service = ThriftService
+
     def register(self, name, processor_cls, handler_cls, **opts):
-        listener = Listener(host=opts.get('host', '0.0.0.0'),
-                            port=opts.get('port'),
-                            backlog=opts.get('backlog'))
-        service = ThriftService(processor_cls=processor_cls,
-                                handler_cls=handler_cls)
+        """Register new service in repository."""
+        # Create listener.
+        listener = self.Listener(host=opts.get('host', '0.0.0.0'),
+                                 port=opts.get('port'),
+                                 backlog=opts.get('backlog'))
+        # Create service.
+        service = self.Service(processor_cls=processor_cls,
+                               handler_cls=handler_cls,
+                               protocol_factory_cls=opts.get(
+                                    'protocol_factory_cls',
+                                    self.app.config.PROTOCOL_FACTORY_CLS))
+        # Create slot itself.
         slot = Slot(name, listener, service)
         if slot in self:
             raise RegistrationError('Service {0!r} already present in'

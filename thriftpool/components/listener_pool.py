@@ -30,24 +30,28 @@ class ListenerPool(LogsMixin):
 
     def start(self):
         """Start all registered listeners."""
-        for listener in self.pool:
+        for listener, slot in self.pool:
             listener.start()
-            listener_started.send(self, listener=listener, app=self.app)
+            listener_started.send(self, listener=listener, slot=slot,
+                                  app=self.app)
             self._info("Starting listener on '%s:%d' for service '%s'.",
                        listener.host, listener.port, listener.name)
 
     def stop(self):
         """Stop all registered listeners."""
-        for listener in self.pool:
+        for listener, slot in self.pool:
             self._info("Stopping listening on '%s:%d', service '%s'.",
                        listener.host, listener.port, listener.name)
             listener.stop()
-            listener_stopped.send(self, listener=listener, app=self.app)
+            listener_stopped.send(self, listener=listener, slot=slot,
+                                  app=self.app)
 
-    def register(self, name, host, port, backlog=None):
+    def register(self, slot):
         """Register new listener with given parameters."""
+        name, host, port, backlog = slot.name, slot.listener.host, \
+            slot.listener.port, slot.listener.backlog
         listener = self.Listener(name, (host, port or 0), backlog=backlog)
-        self.pool.append(listener)
+        self.pool.append((listener, slot))
         self._info("Register listener for service '%s'.", listener.name)
 
 
@@ -63,6 +67,5 @@ class ListenerPoolComponent(StartStopComponent):
         """
         listener_pool = parent.listener_pool = ListenerPool(parent.app)
         for slot in parent.app.slots:
-            listener_pool.register(slot.name, slot.listener.host,
-                                   slot.listener.port, slot.listener.backlog)
+            listener_pool.register(slot)
         return listener_pool

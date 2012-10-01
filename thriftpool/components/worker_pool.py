@@ -55,6 +55,7 @@ class WorkerPool(LogsMixin, SubclassMixin):
 
     @property
     def endpoints(self):
+        """Collects all endpoints that workers uses."""
         return [container.endpoint for container in self._containers]
 
     def start(self):
@@ -65,9 +66,10 @@ class WorkerPool(LogsMixin, SubclassMixin):
         for container in self._containers:
             container.stop()
 
-    def register(self, name, processor):
-        self._info("Register service '%s'.", name)
+    def register(self, slot):
+        name, processor = slot.name, slot.service.processor
         self.processors[name] = processor
+        self._info("Register service '%s'.", name)
 
 
 class WorkerPoolComponent(StartStopComponent):
@@ -77,5 +79,5 @@ class WorkerPoolComponent(StartStopComponent):
     def create(self, parent):
         worker_pool = parent.worker_pool = WorkerPool(parent.app)
         for slot in parent.app.slots:
-            worker_pool.register(slot.name, slot.service.processor)
+            worker_pool.register(slot)
         return worker_pool
