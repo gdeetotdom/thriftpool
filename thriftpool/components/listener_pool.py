@@ -50,7 +50,7 @@ class ListenerPool(LogsMixin):
         """Register new listener with given parameters."""
         name, host, port, backlog = slot.name, slot.listener.host, \
             slot.listener.port, slot.listener.backlog
-        listener = self.Listener(name, (host, port or 0), backlog=backlog)
+        listener = self.Listener(name, (host, port), backlog=backlog)
         self.pool.append((listener, slot))
         self._info("Register listener for service '%s'.", listener.name)
 

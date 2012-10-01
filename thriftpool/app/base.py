@@ -102,7 +102,8 @@ class ThriftPool(SubclassMixin):
 
     @cached_property
     def socket_zmq(self):
-        return SocketZMQ(context=self.context, loop=self.loop)
+        return SocketZMQ(context=self.context, loop=self.loop,
+                         port_range=self.config.SERVICE_PORT_RANGE)
 
     @cached_property
     def OrchestratorController(self):

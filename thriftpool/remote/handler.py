@@ -7,7 +7,6 @@ class Handler(BaseHandler, Iface):
 
     class options:
         processor = Processor
-        port = 45000
 
     def ping(self):
         pass
