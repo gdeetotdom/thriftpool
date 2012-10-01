@@ -3,7 +3,8 @@ from __future__ import absolute_import
 
 from collections import namedtuple
 
-from thriftpool.app.handlers import ProcessorMixin, WrappedHandlerMeta
+from thriftpool.request.handler import WrappedHandlerMeta
+from thriftpool.request.processor import ProcessorMixin
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.imports import symbol_by_name
 from thriftpool.exceptions import RegistrationError

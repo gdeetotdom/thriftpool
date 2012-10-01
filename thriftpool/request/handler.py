@@ -4,8 +4,9 @@ from __future__ import absolute_import
 import logging
 from functools import wraps
 
-from thrift.Thrift import TApplicationException, TMessageType
+from thrift.Thrift import TApplicationException
 
+from thriftpool import thriftpool
 from thriftpool.signals import handler_method_guarded
 from thriftpool.exceptions import WrappingError
 
@@ -21,6 +22,7 @@ class guarded_method(object):
         """Create bounded method."""
         handler = obj._handler
         method = getattr(handler, self.__name__)
+        stack = thriftpool.request_stack
 
         # Apply all returned by signal decorators.
         for sender, decorator in handler_method_guarded.send(sender=handler,
@@ -30,8 +32,10 @@ class guarded_method(object):
 
         @wraps(method)
         def inner_method(*args, **kwargs):
+            stack.add(handler, method, args, kwargs)
             try:
-                return method(*args, **kwargs)
+                with stack:
+                    return method(*args, **kwargs)
             except Exception as exc:
                 # Catch all exceptions here, process they here. Write application
                 # exception to thrift transport.
@@ -106,28 +110,3 @@ class WrappedHandlerMeta(type):
 
         # Create new class.
         return super(WrappedHandlerMeta, mcs).__new__(mcs, name, bases, attrs)
-
-
-class ProcessorMixin(object):
-    """Process application error if there is one."""
-
-    def process(self, iprot, oprot):
-        name, type, seqid = iprot.readMessageBegin()
-
-        try:
-            try:
-                fn = self._processMap[name]
-            except KeyError:
-                raise TApplicationException(TApplicationException.UNKNOWN_METHOD,
-                                            'Unknown function %s' % (name))
-            else:
-                fn(self, seqid, iprot, oprot)
-
-        except TApplicationException as exc:
-            oprot.writeMessageBegin(name, TMessageType.EXCEPTION, seqid)
-            exc.write(oprot)
-            oprot.writeMessageEnd()
-            oprot.trans.flush()
-            return
-
-        return True

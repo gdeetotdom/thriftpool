@@ -7,9 +7,10 @@ import pyev
 import zmq
 
 from thriftpool.app.config import Configuration
+from thriftpool.exceptions import RegistrationError
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
-from thriftpool.exceptions import RegistrationError
+from thriftpool.utils.imports import symbol_by_name
 from socket_zmq.app import SocketZMQ
 
 from ._state import set_current_app
@@ -139,3 +140,9 @@ class ThriftPool(SubclassMixin):
         if len(args) == 1 and callable(args[0]):
             return inner_register_handler(**options)(*args)
         return inner_register_handler(**options)
+
+    @cached_property
+    def request_stack(self):
+        """Store current requests."""
+        RequestStack = symbol_by_name('thriftpool.request.stack:RequestStack')
+        return RequestStack()
