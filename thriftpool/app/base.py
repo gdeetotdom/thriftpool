@@ -93,6 +93,12 @@ class ThriftPool(SubclassMixin):
             self.slots.register(**params)
 
     @cached_property
+    def protocol_factory(self):
+        """Create handler instance."""
+        ProtocolFactory = symbol_by_name(self.config.PROTOCOL_FACTORY_CLS)
+        return ProtocolFactory()
+
+    @cached_property
     def context(self):
         return zmq.Context()
 
@@ -103,7 +109,8 @@ class ThriftPool(SubclassMixin):
     @cached_property
     def socket_zmq(self):
         return SocketZMQ(context=self.context, loop=self.loop,
-                         port_range=self.config.SERVICE_PORT_RANGE)
+                         port_range=self.config.SERVICE_PORT_RANGE,
+                         protocol_factory=self.protocol_factory)
 
     @cached_property
     def OrchestratorController(self):

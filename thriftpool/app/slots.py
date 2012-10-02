@@ -16,19 +16,8 @@ class Listener(namedtuple('Listener', 'host port backlog')):
     """Specify which port we should listen."""
 
 
-class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls'
-                                                ' protocol_factory_cls')):
+class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
     """Describe service information."""
-
-    @cached_property
-    def ProtocolFactory(self):
-        """Recreate protocol factory class."""
-        return symbol_by_name(self.protocol_factory_cls)
-
-    @cached_property
-    def protocol_factory(self):
-        """Create handler instance."""
-        return self.ProtocolFactory()
 
     @cached_property
     def Handler(self):
@@ -89,10 +78,7 @@ class Repository(set):
                                  backlog=opts.get('backlog'))
         # Create service.
         service = self.Service(processor_cls=processor_cls,
-                               handler_cls=handler_cls,
-                               protocol_factory_cls=opts.get(
-                                    'protocol_factory_cls',
-                                    self.app.config.PROTOCOL_FACTORY_CLS))
+                               handler_cls=handler_cls)
         # Create slot itself.
         slot = Slot(name, listener, service)
         if slot in self:
