@@ -52,7 +52,7 @@ class ListenerPool(LogsMixin):
             slot.listener.port, slot.listener.backlog
         listener = self.Listener(name, (host, port), backlog=backlog)
         self.pool.append((listener, slot))
-        self._info("Register listener for service '%s'.", listener.name)
+        self._debug("Register listener for service '%s'.", listener.name)
 
 
 class ListenerPoolComponent(StartStopComponent):

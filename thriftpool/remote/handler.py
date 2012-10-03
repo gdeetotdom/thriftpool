@@ -6,6 +6,7 @@ from thriftpool.base import BaseHandler
 class Handler(BaseHandler, Iface):
 
     class options:
+        name = 'ThriftPool'
         processor = Processor
 
     def ping(self):

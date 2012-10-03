@@ -84,4 +84,3 @@ class Logging(object):
         self.redirect_stdouts_to_logger(logger)
         if self.app.config.LOG_REQUESTS:
             self.setup_request_logging()
-

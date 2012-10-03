@@ -69,7 +69,7 @@ class WorkerPool(LogsMixin, SubclassMixin):
     def register(self, slot):
         name, processor = slot.name, slot.service.processor
         self.processors[name] = processor
-        self._info("Register service '%s'.", name)
+        self._debug("Register service '%s'.", name)
 
 
 class WorkerPoolComponent(StartStopComponent):
