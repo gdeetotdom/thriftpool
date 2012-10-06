@@ -1,6 +1,6 @@
 """Container for thrift services."""
 
-VERSION = (0, 1, 4)
+VERSION = (0, 1, 5)
 
 __version__ = '.'.join(map(str, VERSION[0:3]))
 __author__ = 'Lipin Dmitriy'

@@ -26,7 +26,7 @@ class Logging(object):
         self.request_logger = None
 
     def redirect_stdouts_to_logger(self, logger, loglevel=None,
-            stdout=True, stderr=True):
+                                   stdout=True, stderr=True):
         """Redirect :class:`sys.stdout` and :class:`sys.stderr` to a
         logging instance.
 

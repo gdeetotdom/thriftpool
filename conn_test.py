@@ -11,9 +11,9 @@ else:
 
 
 host = "127.0.0.1"
-port = 45000
+port = 19097
 
-delta = 5
+delta = 60
 
 
 # Init thrift connection and protocol handlers

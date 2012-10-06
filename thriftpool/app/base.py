@@ -3,7 +3,6 @@ from __future__ import absolute_import
 
 import inspect
 
-import pyev
 import zmq
 
 from thriftpool.app.config import Configuration
@@ -103,12 +102,8 @@ class ThriftPool(SubclassMixin):
         return zmq.Context()
 
     @cached_property
-    def loop(self):
-        return pyev.Loop(debug=self.config.DEBUG)
-
-    @cached_property
     def socket_zmq(self):
-        return SocketZMQ(context=self.context, loop=self.loop,
+        return SocketZMQ(context=self.context,
                          port_range=self.config.SERVICE_PORT_RANGE,
                          protocol_factory=self.protocol_factory)
 
