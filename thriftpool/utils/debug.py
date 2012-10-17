@@ -20,8 +20,7 @@ else:
 
 NEW_REQUEST_MESSAGE = \
 """{prefix} do {method_name} where
-    args = {args}
-    kwargs = {kwargs}"""
+    args = {args}"""
 
 SERVED_REQUEST_MESSAGE = \
 """{prefix} return {result} ({took})"""
@@ -58,11 +57,13 @@ class RequestLogger(object):
             def inner(*args, **kwargs):
                 request = self.counter.next()
                 # Log incoming request.
+                params = {}
+                params.update(dict(zip(method_args[:len(args)], args)))
+                params.update(kwargs)
                 self.logger.info(NEW_REQUEST_MESSAGE.format(
                     prefix=magenta('In [{0}]:'.format(request)),
                     method_name=blue(method_name),
-                    args=blue(pformat(dict(zip(method_args[:len(args)], args)))),
-                    kwargs=blue(pformat(kwargs))
+                    args=blue(pformat(params))
                 ))
                 # Measure time.
                 start = default_timer()
