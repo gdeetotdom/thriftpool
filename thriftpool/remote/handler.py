@@ -11,3 +11,6 @@ class Handler(BaseHandler, Iface):
 
     def ping(self):
         pass
+
+    def echoString(self, s):
+        return s

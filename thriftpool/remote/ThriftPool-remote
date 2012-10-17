@@ -24,6 +24,7 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
   print ''
   print 'Functions:'
   print '  void ping()'
+  print '  string echoString(string s)'
   print ''
   sys.exit(0)
 
@@ -80,6 +81,12 @@ if cmd == 'ping':
     print 'ping requires 0 args'
     sys.exit(1)
   pp.pprint(client.ping())
+
+elif cmd == 'echoString':
+  if len(args) != 1:
+    print 'echoString requires 1 args'
+    sys.exit(1)
+  pp.pprint(client.echoString(args[0],))
 
 else:
   print 'Unrecognized method %s' % cmd

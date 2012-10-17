@@ -34,7 +34,7 @@ while elapsed < delta:
     transport.open()
     for i in xrange(iterations):
         #transport.open()
-        client.ping()
+        client.echoString('test')
         #transport.close()
     transport.close()
     elapsed = _timer() - t

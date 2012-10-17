@@ -6,7 +6,7 @@
 #  options string: py:new_style,utf8strings,slots,dynamic
 #
 
-from thrift.Thrift import TType, TMessageType, TException
+from thrift.Thrift import TType, TMessageType, TException, TApplicationException
 
 from thrift.protocol.TBase import TBase, TExceptionBase
 
