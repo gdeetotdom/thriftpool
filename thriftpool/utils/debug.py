@@ -47,7 +47,7 @@ class RequestLogger(object):
     def decorate(self, signal, sender, fn):
         method_name = "{0}.{1}".format(qualname(sender), fn.__name__)
         method_args = inspect.getargspec(fn).args
-        if method_args and method_args[0] == 'self':
+        if inspect.ismethod(fn) and method_args:
             method_args.pop(0)
         blue = self.colored.blue
         black = self.colored.black
