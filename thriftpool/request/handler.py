@@ -33,15 +33,15 @@ class guarded_method(object):
         @wraps(method)
         def inner_method(*args, **kwargs):
             stack.add(handler, method, args, kwargs)
-            try:
-                with stack:
+            with stack:
+                try:
                     return method(*args, **kwargs)
-            except Exception as exc:
-                # Catch all exceptions here, process they here. Write application
-                # exception to thrift transport.
-                logging.exception(exc)
-                raise TApplicationException(TApplicationException.INTERNAL_ERROR,
-                    "({0}) {1}".format(type(exc).__name__, str(exc)))
+                except Exception as exc:
+                    # Catch all exceptions here, process they here. Write application
+                    # exception to thrift transport.
+                    logging.exception(exc)
+                    raise TApplicationException(TApplicationException.INTERNAL_ERROR,
+                        "({0}) {1}".format(type(exc).__name__, str(exc)))
 
         return inner_method
 
