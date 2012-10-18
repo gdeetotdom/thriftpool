@@ -17,7 +17,23 @@ listener_stopped = Signal(providing_args=['listener', 'slot', 'app'])
 
 
 #: Called before loggers are configured.
-setup_logging = Signal(providing_args=['root', 'logfile'])
+setup_logging = Signal(providing_args=['root', 'logfile', 'loglevel'])
+
+
+#: Called after loggers are configured.
+after_logging_setup = Signal(providing_args=['root', 'logfile', 'loglevel'])
+
+
+#: Called on application start.
+app_start = Signal(providing_args=['app'])
+
+
+#: Called after application start.
+after_app_start = Signal(providing_args=['app'])
+
+
+#: Called after application stopped.
+app_shutdown = Signal(providing_args=['app'])
 
 
 #: Collect file descriptors that must not be closed.

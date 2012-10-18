@@ -9,6 +9,8 @@ try:
 except ImportError:
     iter_entry_points = lambda *args, **kwargs: []
 
+from thriftpool import signals
+
 __all__ = ['Loader']
 
 
@@ -56,12 +58,12 @@ class Loader(object):
 
     def on_start(self):
         """Called before controller start."""
-        pass
+        signals.app_start.send(sender=self, app=self.app)
 
     def after_start(self):
         """Called after controller start."""
-        pass
+        signals.after_app_start.send(sender=self, app=self.app)
 
     def on_shutdown(self):
         """Called after controller shutdown."""
-        pass
+        signals.app_shutdown.send(sender=self, app=self.app)

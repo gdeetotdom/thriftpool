@@ -66,7 +66,7 @@ setup(name='thriftpool',
       url=meta['homepage'],
       license='BSD',
       packages=find_packages(),
-      install_requires=['thrift', 'socket_zmq'],
+      install_requires=['thrift', 'socket_zmq>=0.1.5'],
       entry_points=entrypoints,
       zip_safe=False
 )
