@@ -16,7 +16,7 @@ class Listener(namedtuple('Listener', 'host port backlog')):
     """Specify which port we should listen."""
 
 
-class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
+class ThriftService(namedtuple('ThriftService', 'service_name processor_cls handler_cls')):
     """Describe service information."""
 
     @cached_property
@@ -33,7 +33,8 @@ class ThriftService(namedtuple('ThriftService', 'processor_cls handler_cls')):
     def WrappedHandler(self):
         """Create wrapped handler instance."""
         Handler = self.Handler
-        attrs = dict(_handler_cls=Handler)
+        attrs = dict(_handler_cls=Handler,
+                     _service_name=self.service_name)
         name = 'Wrapped{0}'.format(Handler.__name__)
         return WrappedHandlerMeta(name, (object, ), attrs)
 
@@ -77,7 +78,8 @@ class Repository(set):
                                  port=opts.get('port'),
                                  backlog=opts.get('backlog'))
         # Create service.
-        service = self.Service(processor_cls=processor_cls,
+        service = self.Service(service_name=name,
+                               processor_cls=processor_cls,
                                handler_cls=handler_cls)
         # Create slot itself.
         slot = Slot(name, listener, service)

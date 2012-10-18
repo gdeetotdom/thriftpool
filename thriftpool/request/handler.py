@@ -21,6 +21,7 @@ class guarded_method(object):
     def __create_method(self, obj):
         """Create bounded method."""
         handler = obj._handler
+        service_name = obj._service_name
         method = getattr(handler, self.__name__)
         stack = thriftpool.request_stack
 
@@ -32,7 +33,7 @@ class guarded_method(object):
 
         @wraps(method)
         def inner_method(*args, **kwargs):
-            stack.add(handler, method, args, kwargs)
+            stack.add(handler, method, args, kwargs, service_name)
             with stack:
                 try:
                     return method(*args, **kwargs)
@@ -59,6 +60,7 @@ class BaseWrappedHandler(object):
     """Abstract base for wrapped handler."""
 
     _handler_cls = None
+    _service_name = None
     _wrapped_methods = None
 
     def __init__(self, handler):
@@ -75,6 +77,10 @@ class WrappedHandlerMeta(type):
         # Add base class to bases.
         if BaseWrappedHandler not in bases:
             bases = (BaseWrappedHandler,) + bases
+        # Ensure that service name provided.
+        if '_service_name' not in attrs:
+            raise WrappingError('Missing attribute "_service_name" in'
+                                ' class "{0}"'.format(name))
         # Get original handler class.
         try:
             handler_cls = attrs['_handler_cls']

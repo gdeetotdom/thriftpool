@@ -8,7 +8,7 @@ from thriftpool.utils.local import LocalStack
 from thriftpool.utils.proxy import Proxy
 
 
-class Request(namedtuple('Request', 'handler method args kwargs')):
+class Request(namedtuple('Request', 'handler method args kwargs service_name')):
     """Describe thrift request."""
 
 
@@ -20,9 +20,9 @@ class RequestStack(object):
     def __init__(self):
         self.stack = LocalStack()
 
-    def add(self, handler, method, args, kwargs):
+    def add(self, handler, method, args, kwargs, service_name):
         """Register new request."""
-        request = self.Request(handler, method, args, kwargs)
+        request = self.Request(handler, method, args, kwargs, service_name)
         self.stack.push(request)
         return request
 
