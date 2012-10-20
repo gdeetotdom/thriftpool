@@ -34,3 +34,6 @@ pip-log.txt
 .project
 .pydevproject
 .settings
+
+#PyCharm
+.idea
