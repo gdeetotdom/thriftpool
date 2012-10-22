@@ -58,7 +58,7 @@ class ListenerPool(LogsMixin):
 class ListenerPoolComponent(StartStopComponent):
 
     name = 'orchestrator.listener_pool'
-    requires = ('event_loop',)
+    requires = ('worker_pool',)
 
     def create(self, parent):
         """Create new :class:`ListenerPool` instance. Create existed

@@ -6,37 +6,12 @@ from thriftpool.components.base import StartStopComponent
 from thriftpool.utils.functional import cached_property
 from thriftpool.utils.logs import LogsMixin
 from thriftpool.utils.mixin import SubclassMixin
-from thriftpool.utils.threads import DaemonThread
 
 logger = logging.getLogger(__name__)
 
 
-class WorkerContainer(DaemonThread):
-
-    def __init__(self, worker):
-        self.worker = worker
-        super(WorkerContainer, self).__init__()
-
-    @property
-    def endpoint(self):
-        return self.worker.worker_endpoint
-
-    def start(self):
-        super(WorkerContainer, self).start()
-        self.worker.wait()
-
-    def body(self):
-        self.worker.start()
-
-    def stop(self):
-        self.worker.stop()
-        super(WorkerContainer, self).stop()
-
-
 class WorkerPool(LogsMixin, SubclassMixin):
     """Maintain pool of hub threads."""
-
-    WorkerContainer = WorkerContainer
 
     def __init__(self, app, count=None):
         self.app = app
@@ -49,22 +24,16 @@ class WorkerPool(LogsMixin, SubclassMixin):
         return self.app.socket_zmq.Worker
 
     @cached_property
-    def _containers(self):
-        return [self.WorkerContainer(self.Worker(self.processors))
-                for i in xrange(self.worker_count)]
-
-    @property
-    def endpoints(self):
-        """Collects all endpoints that workers uses."""
-        return [container.endpoint for container in self._containers]
+    def workers(self):
+        return [self.Worker(self.processors) for i in xrange(self.worker_count)]
 
     def start(self):
-        for container in self._containers:
-            container.start()
+        for worker in self.workers:
+            worker.start()
 
     def stop(self):
-        for container in self._containers:
-            container.stop()
+        for worker in self.workers:
+            worker.stop()
 
     def register(self, slot):
         name, processor = slot.name, slot.service.processor
@@ -75,6 +44,7 @@ class WorkerPool(LogsMixin, SubclassMixin):
 class WorkerPoolComponent(StartStopComponent):
 
     name = 'orchestrator.worker_pool'
+    requires = ('collector',)
 
     def create(self, parent):
         worker_pool = parent.worker_pool = WorkerPool(parent.app)
