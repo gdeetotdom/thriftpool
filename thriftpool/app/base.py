@@ -3,8 +3,6 @@ from __future__ import absolute_import
 
 import inspect
 
-import zmq
-
 from thriftpool.app.config import Configuration
 from thriftpool.exceptions import RegistrationError
 from thriftpool.utils.functional import cached_property
@@ -98,13 +96,8 @@ class ThriftPool(SubclassMixin):
         return ProtocolFactory()
 
     @cached_property
-    def context(self):
-        return zmq.Context()
-
-    @cached_property
     def socket_zmq(self):
-        return SocketZMQ(context=self.context,
-                         port_range=self.config.SERVICE_PORT_RANGE,
+        return SocketZMQ(port_range=self.config.SERVICE_PORT_RANGE,
                          protocol_factory=self.protocol_factory)
 
     @cached_property

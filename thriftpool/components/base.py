@@ -193,15 +193,18 @@ class StartStopComponent(Component):
     terminable = False
 
     def start(self):
-        return self.obj.start()
+        if self.obj is not None:
+            return self.obj.start()
 
     def stop(self):
-        return self.obj.stop()
+        if self.obj is not None:
+            return self.obj.stop()
 
     def terminate(self):
-        if self.terminable:
-            return self.obj.terminate()
-        return self.obj.stop()
+        if self.obj is not None:
+            if self.terminable:
+                return self.obj.terminate()
+            return self.obj.stop()
 
     def include(self, parent):
         if super(StartStopComponent, self).include(parent):
