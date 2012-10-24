@@ -17,7 +17,8 @@ class OrchestratorNamespace(Namespace):
     def modules(self):
         return ['thriftpool.components.event_loop',
                 'thriftpool.components.listener_pool',
-                'thriftpool.components.processor']
+                'thriftpool.components.processor',
+                'thriftpool.components.processing_pool']
 
 
 class OrchestratorController(Controller):

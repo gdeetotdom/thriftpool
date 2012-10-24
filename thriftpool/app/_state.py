@@ -1,7 +1,7 @@
 """Handle global package state."""
 from __future__ import absolute_import
 
-from thriftpool.utils.proxy import Proxy
+from socket_zmq.utils.proxy import Proxy
 
 default_app = None
 

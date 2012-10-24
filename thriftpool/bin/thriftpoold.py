@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-import sys
 import os
 
 from thriftpool.utils.logs import mlevel, LOG_LEVELS

@@ -13,8 +13,9 @@ from collections import defaultdict
 from importlib import import_module
 from logging import getLogger
 
-from thriftpool.utils.imports import instantiate
-from thriftpool.utils.logs import LogsMixin
+from socket_zmq.utils.imports import instantiate
+
+from thriftpool.utils.mixin import LogsMixin
 from thriftpool.utils.structures import DependencyGraph
 
 logger = getLogger(__name__)
@@ -193,19 +194,22 @@ class StartStopComponent(Component):
     terminable = False
 
     def start(self):
-        if self.obj is not None:
-            return self.obj.start()
+        if self.obj is None:
+            return
+        self.obj.start()
 
     def stop(self):
-        if self.obj is not None:
-            return self.obj.stop()
+        if self.obj is None:
+            return
+        self.obj.stop()
 
     def terminate(self):
-        if self.obj is not None:
-            if self.terminable:
-                return self.obj.terminate()
-            return self.obj.stop()
+        if self.obj is None:
+            return
+        if self.terminable:
+            self.obj.terminate()
+        self.obj.stop()
 
     def include(self, parent):
         if super(StartStopComponent, self).include(parent):
-            parent.components.append(self.obj)
+            parent.components.append(self)

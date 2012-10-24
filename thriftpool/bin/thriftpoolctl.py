@@ -2,9 +2,10 @@ from __future__ import absolute_import
 
 import argparse
 
-from thriftpool.bin.base import BaseCommand, Option
+from socket_zmq.utils.decorators import cached_property
+
+from thriftpool.bin.base import BaseCommand
 from thriftpool.bin.thriftpoold import WorkerCommand
-from thriftpool.utils.functional import cached_property
 from thriftpool.utils.text import indent
 from thriftpool.utils.mixin import SubclassMixin
 

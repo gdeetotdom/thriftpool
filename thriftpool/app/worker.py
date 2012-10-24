@@ -5,9 +5,10 @@ import warnings
 import socket
 import os
 
+from socket_zmq.utils.decorators import cached_property
+
 from thriftpool.utils.other import setproctitle
 from thriftpool.utils.platforms import create_pidlock, daemonize
-from thriftpool.utils.functional import cached_property
 from thriftpool.signals import collect_excluded_fds
 
 

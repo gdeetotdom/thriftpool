@@ -12,11 +12,12 @@ from __future__ import absolute_import
 from logging import getLogger
 from threading import Event
 
+from socket_zmq.utils.imports import qualname
+
 from thriftpool.components.base import Namespace
 from thriftpool.exceptions import SystemTerminate
 from thriftpool.utils.finalize import Finalize
-from thriftpool.utils.imports import qualname
-from thriftpool.utils.logs import LogsMixin
+from thriftpool.utils.mixin import LogsMixin
 from thriftpool.utils.signals import signals
 
 __all__ = ['Controller']

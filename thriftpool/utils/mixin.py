@@ -1,6 +1,9 @@
 from __future__ import absolute_import
 
-from thriftpool.utils.imports import symbol_by_name
+import inspect
+
+from socket_zmq.utils.imports import symbol_by_name
+from socket_zmq.utils.decorators import cached_property
 from thriftpool.utils.other import rgetattr
 from thriftpool.app._state import current_app
 
@@ -44,3 +47,27 @@ class SubclassMixin(object):
                      **kw)
 
         return type(name or Class.__name__, (Class,), attrs)
+
+
+class LogsMixin(object):
+    """Simple helper for logging."""
+
+    @cached_property
+    def _logger(self):
+        module = inspect.getmodule(self.__class__)
+        return getattr(module, 'logger')
+
+    def _exception(self, exc):
+        self._logger.exception(exc)
+
+    def _critical(self, msg, *args, **kwargs):
+        self._logger.critical(msg, *args, **kwargs)
+
+    def _error(self, msg, *args, **kwargs):
+        self._logger.error(msg, *args, **kwargs)
+
+    def _info(self, msg, *args, **kwargs):
+        self._logger.info(msg, *args, **kwargs)
+
+    def _debug(self, msg, *args, **kwargs):
+        self._logger.debug(msg, *args, **kwargs)

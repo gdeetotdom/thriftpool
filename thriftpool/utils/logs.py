@@ -8,14 +8,12 @@ This file was copied and adapted from celery.
 """
 from __future__ import absolute_import
 
-import inspect
 import logging
 import sys
 import threading
 import traceback
 
 from .encoding import smart_str
-from .functional import cached_property
 from .term import colored
 
 
@@ -33,30 +31,6 @@ def mlevel(level):
     if level and not isinstance(level, int):
         return LOG_LEVELS[level.upper()]
     return level
-
-
-class LogsMixin(object):
-    """Simple helper for logging."""
-
-    @cached_property
-    def _logger(self):
-        module = inspect.getmodule(self.__class__)
-        return getattr(module, 'logger')
-
-    def _exception(self, exc):
-        self._logger.exception(exc)
-
-    def _critical(self, msg, *args, **kwargs):
-        self._logger.critical(msg, *args, **kwargs)
-
-    def _error(self, msg, *args, **kwargs):
-        self._logger.error(msg, *args, **kwargs)
-
-    def _info(self, msg, *args, **kwargs):
-        self._logger.info(msg, *args, **kwargs)
-
-    def _debug(self, msg, *args, **kwargs):
-        self._logger.debug(msg, *args, **kwargs)
 
 
 class ColorFormatter(logging.Formatter):

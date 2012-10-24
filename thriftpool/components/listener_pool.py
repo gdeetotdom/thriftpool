@@ -5,7 +5,7 @@ from collections import deque
 import logging
 
 from thriftpool.components.base import StartStopComponent
-from thriftpool.utils.logs import LogsMixin
+from thriftpool.utils.mixin import LogsMixin
 from thriftpool.signals import listener_started, listener_stopped
 
 logger = logging.getLogger(__name__)
@@ -42,9 +42,9 @@ class ListenerPool(LogsMixin):
         for listener, slot in self.pool:
             self._info("Stopping listening on '%s:%d', service '%s'.",
                        listener.host, listener.port, listener.name)
-            listener.stop()
             listener_stopped.send(self, listener=listener, slot=slot,
                                   app=self.app)
+            listener.stop()
 
     def register(self, slot):
         """Register new listener with given parameters."""
@@ -58,7 +58,7 @@ class ListenerPool(LogsMixin):
 class ListenerPoolComponent(StartStopComponent):
 
     name = 'orchestrator.listener_pool'
-    requires = ('processor', 'event_loop')
+    requires = ('processor', 'event_loop', 'processing_pool')
 
     def create(self, parent):
         """Create new :class:`ListenerPool` instance. Create existed

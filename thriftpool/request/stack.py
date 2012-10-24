@@ -3,9 +3,10 @@ from __future__ import absolute_import
 
 from collections import namedtuple
 
+from socket_zmq.utils.proxy import Proxy
+
 from thriftpool import thriftpool
 from thriftpool.utils.local import LocalStack
-from thriftpool.utils.proxy import Proxy
 
 
 class Request(namedtuple('Request', 'handler method args kwargs service_name')):

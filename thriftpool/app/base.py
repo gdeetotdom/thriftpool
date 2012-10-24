@@ -3,12 +3,13 @@ from __future__ import absolute_import
 
 import inspect
 
+from socket_zmq.utils.decorators import cached_property
+from socket_zmq.utils.imports import symbol_by_name
+from socket_zmq.app import SocketZMQ
+
 from thriftpool.app.config import Configuration
 from thriftpool.exceptions import RegistrationError
-from thriftpool.utils.functional import cached_property
 from thriftpool.utils.mixin import SubclassMixin
-from thriftpool.utils.imports import symbol_by_name
-from socket_zmq.app import SocketZMQ
 
 from ._state import set_current_app
 

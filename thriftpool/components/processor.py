@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import logging
 
 from thriftpool.components.base import StartStopComponent
-from thriftpool.utils.logs import LogsMixin
+from thriftpool.utils.mixin import LogsMixin
 
 logger = logging.getLogger(__name__)
 
