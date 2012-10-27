@@ -5,7 +5,7 @@ import warnings
 import socket
 import os
 
-from socket_zmq.utils.decorators import cached_property
+from thriftworker.utils.decorators import cached_property
 
 from thriftpool.utils.other import setproctitle
 from thriftpool.utils.platforms import create_pidlock, daemonize
@@ -34,8 +34,8 @@ class Worker(object):
                                            ' '.join([''] + self.args)))
 
     @cached_property
-    def orchestrator(self):
-        return self.app.OrchestratorController()
+    def controller(self):
+        return self.app.WorkerController()
 
     def on_start(self):
         if getattr(os, 'getuid', None) and os.getuid() == 0:
@@ -53,7 +53,7 @@ class Worker(object):
             excluded = [receiver[1] for receiver in receivers if receiver[1]]
             excluded = [item for sublist in excluded for item in sublist]
             self.daemon = daemonize(self.foreground, excluded_fds=excluded)
-        self.orchestrator.start()
+        self.controller.start()
 
     def on_exit(self):
         pass

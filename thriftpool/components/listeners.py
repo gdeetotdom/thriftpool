@@ -11,7 +11,7 @@ from thriftpool.signals import listener_started, listener_stopped
 logger = logging.getLogger(__name__)
 
 
-class ListenerPool(LogsMixin):
+class Listeners(LogsMixin):
     """Maintain pool of listeners. When listener starts it open all needed
     sockets and connect to workers. Event loop should be started before
     listeners starts.
@@ -21,12 +21,12 @@ class ListenerPool(LogsMixin):
     def __init__(self, app):
         self.app = app
         self.pool = deque()
-        super(ListenerPool, self).__init__()
+        super(Listeners, self).__init__()
 
     @property
     def Listener(self):
-        """Shortcut to :class:`socket_zmq.listener.Listener` class."""
-        return self.app.socket_zmq.Listener
+        """Shortcut to :class:`thriftworker.listener.Listener` class."""
+        return self.app.thriftworker.Listener
 
     def start(self):
         """Start all registered listeners."""
@@ -55,17 +55,17 @@ class ListenerPool(LogsMixin):
         self._debug("Register listener for service '%s'.", listener.name)
 
 
-class ListenerPoolComponent(StartStopComponent):
+class ListenersComponent(StartStopComponent):
 
-    name = 'orchestrator.listener_pool'
-    requires = ('processor', 'event_loop', 'processing_pool')
+    name = 'worker.listeners'
+    requires = ('services', 'loop')
 
     def create(self, parent):
         """Create new :class:`ListenerPool` instance. Create existed
         listeners.
 
         """
-        listener_pool = parent.listener_pool = ListenerPool(parent.app)
+        listener_pool = parent.listener_pool = Listeners(parent.app)
         for slot in parent.app.slots:
             listener_pool.register(slot)
         return listener_pool

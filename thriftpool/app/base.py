@@ -3,13 +3,13 @@ from __future__ import absolute_import
 
 import inspect
 
-from socket_zmq.utils.decorators import cached_property
-from socket_zmq.utils.imports import symbol_by_name
-from socket_zmq.app import SocketZMQ
+from thriftworker.utils.decorators import cached_property
+from thriftworker.app import ThriftWorker
 
 from thriftpool.app.config import Configuration
 from thriftpool.exceptions import RegistrationError
 from thriftpool.utils.mixin import SubclassMixin
+from thriftpool.utils.imports import symbol_by_name
 
 from ._state import set_current_app
 
@@ -37,10 +37,8 @@ class ThriftPool(SubclassMixin):
         set_current_app(self)
 
     def _after_fork(self, obj_):
-        # Reset all resources after fork."
-        del self.socket_zmq
-        del self.context
-        del self.loop
+        # Reset needed resources after fork."
+        pass
 
     @cached_property
     def Loader(self):
@@ -97,13 +95,13 @@ class ThriftPool(SubclassMixin):
         return ProtocolFactory()
 
     @cached_property
-    def socket_zmq(self):
-        return SocketZMQ(port_range=self.config.SERVICE_PORT_RANGE,
-                         protocol_factory=self.protocol_factory)
+    def thriftworker(self):
+        return ThriftWorker(port_range=self.config.SERVICE_PORT_RANGE,
+                            protocol_factory=self.protocol_factory)
 
     @cached_property
-    def OrchestratorController(self):
-        return self.subclass_with_self('thriftpool.controllers.orchestrator:OrchestratorController')
+    def WorkerController(self):
+        return self.subclass_with_self('thriftpool.controllers.worker:WorkerController')
 
     @cached_property
     def Worker(self):

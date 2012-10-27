@@ -3,12 +3,12 @@ from __future__ import absolute_import
 
 from collections import namedtuple
 
-from socket_zmq.utils.decorators import cached_property
-from socket_zmq.utils.imports import symbol_by_name
+from thriftworker.utils.decorators import cached_property
 
 from thriftpool.request.handler import WrappedHandlerMeta
 from thriftpool.request.processor import ProcessorMixin
 from thriftpool.exceptions import RegistrationError
+from thriftpool.utils.imports import symbol_by_name
 
 __all__ = ['Repository']
 

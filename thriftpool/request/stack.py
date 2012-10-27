@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 from collections import namedtuple
 
-from socket_zmq.utils.proxy import Proxy
+from thriftworker.utils.proxy import Proxy
 
 from thriftpool import thriftpool
 from thriftpool.utils.local import LocalStack

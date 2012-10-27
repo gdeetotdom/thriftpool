@@ -8,12 +8,12 @@ from thriftpool.utils.mixin import LogsMixin
 logger = logging.getLogger(__name__)
 
 
-class ProcessorComponent(LogsMixin, StartStopComponent):
+class ServicesComponent(LogsMixin, StartStopComponent):
 
-    name = 'orchestrator.processor'
+    name = 'worker.services'
 
     def create(self, parent):
-        processor = parent.app.socket_zmq.processor
+        services = parent.app.thriftworker.services
         for slot in parent.app.slots:
             self._debug("Register service '%s'.", slot.name)
-            processor.register(slot.name, slot.service.processor)
+            services.register(slot.name, slot.service.processor)
