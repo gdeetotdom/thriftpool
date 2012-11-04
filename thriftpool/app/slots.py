@@ -72,6 +72,9 @@ class Repository(set):
     Listener = Listener
     Service = ThriftService
 
+    def __reduce_args__(self):
+        return (list(self),)
+
     def register(self, name, processor_cls, handler_cls, **opts):
         """Register new service in repository."""
         # Create listener.

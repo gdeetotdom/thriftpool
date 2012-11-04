@@ -38,8 +38,11 @@ class SubclassMixin(object):
         """
         Class = symbol_by_name(Class)
         reverse = reverse if reverse else Class.__name__
+        has_reduce_args = getattr(Class, '__reduce_args__', None) is not None
 
-        __reduce__ = lambda self: _unpickle, (Class.__name__, [])
+        def __reduce__(self):
+            args = self.__reduce_args__() if has_reduce_args else []
+            return (_unpickle, (Class.__name__, args))
 
         attrs = dict({attribute: self},
                      __module__=Class.__module__,

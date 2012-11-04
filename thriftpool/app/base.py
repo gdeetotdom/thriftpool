@@ -21,6 +21,13 @@ except ImportError:
 __all__ = ['ThriftPool']
 
 
+def _unpickle_app(cls, changes, slots):
+    app = cls()
+    app.config.update(changes)
+    app.slots = slots
+    return app
+
+
 class ThriftPool(SubclassMixin):
     """Main entry point for this application."""
 
@@ -39,6 +46,13 @@ class ThriftPool(SubclassMixin):
     def _after_fork(self, obj_):
         # Reset needed resources after fork."
         pass
+
+    def __reduce__(self):
+        # Reduce only pickles the configuration changes,
+        # so the default configuration doesn't have to be passed
+        # between processes.
+        return (_unpickle_app, (self.__class__, self.config._changes,
+                                self.slots))
 
     @cached_property
     def Loader(self):
