@@ -2,12 +2,17 @@ from __future__ import absolute_import
 
 import re
 
-try:
-    from setproctitle import setproctitle
-except ImportError:
-    setproctitle = lambda *args, **kwargs: None
+__all__ = ['rgetattr', 'camelcase_to_underscore', 'setproctitle']
 
-__all__ = ['setproctitle', 'camelcase_to_underscore']
+
+try:
+    from setproctitle import setproctitle as _setproctitle
+
+    def setproctitle(title):
+        _setproctitle(title)
+except ImportError:
+    def setproctitle(title):
+        return
 
 
 def camelcase_to_underscore(s):

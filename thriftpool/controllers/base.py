@@ -9,6 +9,8 @@ This file was copied and adapted from celery.
 """
 from __future__ import absolute_import
 
+import uuid
+
 from logging import getLogger
 from threading import Event
 
@@ -42,6 +44,7 @@ class Controller(LogsMixin):
         self._state = None
         self._shutdown_complete = Event()
         self._finalize = Finalize(self, self.stop, exitpriority=1)
+        self.ident = uuid.uuid4()
         self.on_before_init()
         self.components = []
         self.namespace = self.Namespace(app=self.app).apply(self)

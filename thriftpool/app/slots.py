@@ -20,6 +20,9 @@ class Listener(namedtuple('Listener', 'host port backlog')):
 class ThriftService(namedtuple('ThriftService', 'service_name processor_cls handler_cls')):
     """Describe service information."""
 
+    def __reduce__(self):
+        return (self.__class__, tuple(self))
+
     @cached_property
     def Handler(self):
         """Recreate handler class."""

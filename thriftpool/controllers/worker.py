@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 from logging import getLogger
 
+from thriftpool.utils.other import setproctitle
 from thriftpool.components.base import Namespace
 from thriftpool.controllers.base import Controller
 
@@ -14,13 +15,16 @@ class WorkerNamespace(Namespace):
 
     def modules(self):
         return ['thriftpool.components.loop',
-                'thriftpool.components.listeners',
-                'thriftpool.components.services']
+                'thriftpool.components.acceptors',
+                'thriftpool.components.services',
+                'thriftpool.components.executor']
 
 
 class WorkerController(Controller):
 
     Namespace = WorkerNamespace
+
+    acceptors = None
 
     def __init__(self):
         super(WorkerController, self).__init__()
@@ -42,3 +46,15 @@ class WorkerController(Controller):
         # Call hooks.
         self.app.loader.after_start()
         super(WorkerController, self).after_start()
+
+    def ping(self):
+        return self.ident
+
+    def change_title(self, name):
+        setproctitle(name)
+
+    def register_acceptors(self, descriptors):
+        acceptors = self.acceptors
+        for descriptor, name in descriptors.items():
+            descriptor += 4
+            acceptors.add_acceptor(descriptor, name)

@@ -5,20 +5,19 @@ import warnings
 import socket
 import os
 
-from thriftworker.utils.decorators import cached_property
-
 from thriftpool.utils.other import setproctitle
 from thriftpool.utils.platforms import create_pidlock, daemonize
 from thriftpool.signals import collect_excluded_fds
 
 
-class Worker(object):
-    """Worker behavior."""
+class Daemon(object):
+    """Daemon behavior."""
 
     app = None
 
-    def __init__(self, pidfile=None, daemonize=False, foreground=False,
-                 args=None):
+    def __init__(self, controller, pidfile=None, daemonize=False,
+                 foreground=False, args=None):
+        self.controller = controller
         self.pidfile = pidfile
         self.pidlock = None
         self.daemonize = daemonize
@@ -32,10 +31,6 @@ class Worker(object):
         setproctitle('[{0}@{1}]{2}'.format(self.app.config.PROCESS_NAME,
                                            socket.gethostname(),
                                            ' '.join([''] + self.args)))
-
-    @cached_property
-    def controller(self):
-        return self.app.WorkerController()
 
     def on_start(self):
         if getattr(os, 'getuid', None) and os.getuid() == 0:

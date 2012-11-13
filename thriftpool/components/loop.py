@@ -3,9 +3,19 @@ from __future__ import absolute_import
 from .base import StartStopComponent
 
 
-class LoopComponent(StartStopComponent):
+class BaseLoopComponent(StartStopComponent):
 
-    name = 'worker.loop'
+    abstract = True
 
     def create(self, parent):
         return parent.app.thriftworker.loop_container
+
+
+class WorkerLoopComponent(BaseLoopComponent):
+
+    name = 'worker.loop'
+
+
+class ManagerLoopComponent(BaseLoopComponent):
+
+    name = 'manager.loop'

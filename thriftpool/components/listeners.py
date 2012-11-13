@@ -1,9 +1,9 @@
 """Contains component that hold listener pool."""
 from __future__ import absolute_import
 
-from collections import deque
 import logging
 
+from thriftworker.utils.decorators import cached_property
 from thriftpool.components.base import StartStopComponent
 from thriftpool.utils.mixin import LogsMixin
 from thriftpool.signals import listener_started, listener_stopped
@@ -20,13 +20,21 @@ class Listeners(LogsMixin):
 
     def __init__(self, app):
         self.app = app
-        self.pool = deque()
+        self.pool = []
         super(Listeners, self).__init__()
 
-    @property
+    @cached_property
     def Listener(self):
         """Shortcut to :class:`thriftworker.listener.Listener` class."""
         return self.app.thriftworker.Listener
+
+    @cached_property
+    def channels(self):
+        return [listener.channel for listener, _ in self.pool]
+
+    @cached_property
+    def descriptors(self):
+        return {i: listener.name for i, (listener, _) in enumerate(self.pool)}
 
     def start(self):
         """Start all registered listeners."""
@@ -52,20 +60,21 @@ class Listeners(LogsMixin):
             slot.listener.port, slot.listener.backlog
         listener = self.Listener(name, (host, port), backlog=backlog)
         self.pool.append((listener, slot))
+        del self.channels, self.descriptors
         self._debug("Register listener for service '%s'.", listener.name)
 
 
 class ListenersComponent(StartStopComponent):
 
-    name = 'worker.listeners'
-    requires = ('services', 'loop')
+    name = 'manager.listeners'
+    requires = ('loop',)
 
     def create(self, parent):
         """Create new :class:`ListenerPool` instance. Create existed
         listeners.
 
         """
-        listener_pool = parent.listener_pool = Listeners(parent.app)
+        listeners = parent.listeners = Listeners(parent.app)
         for slot in parent.app.slots:
-            listener_pool.register(slot)
-        return listener_pool
+            listeners.register(slot)
+        return listeners

@@ -5,7 +5,7 @@ import argparse
 from thriftworker.utils.decorators import cached_property
 
 from thriftpool.bin.base import BaseCommand
-from thriftpool.bin.thriftpoold import WorkerCommand
+from thriftpool.bin.thriftpoold import ManagerCommand
 from thriftpool.utils.text import indent
 from thriftpool.utils.mixin import SubclassMixin
 
@@ -116,8 +116,8 @@ class list_slots(abstract):
             self.out(self.format_slot(slot) + '\n')
 
 
-class worker(abstract, WorkerCommand):
-    """Run worker daemon. Same as `thriftpoold`."""
+class manager(abstract, ManagerCommand):
+    """Run manager daemon. Same as `thriftpoold`."""
 
 
 def main():

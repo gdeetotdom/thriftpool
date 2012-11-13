@@ -6,7 +6,7 @@ from thriftpool.utils.logs import mlevel, LOG_LEVELS
 from thriftpool.bin.base import BaseCommand, Option
 
 
-class WorkerCommand(BaseCommand):
+class ManagerCommand(BaseCommand):
     """Start ThiftPool daemon."""
 
     options = (
@@ -28,8 +28,9 @@ class WorkerCommand(BaseCommand):
     )
 
     def run(self, *args, **options):
+        app = self.app
         try:
-            self.app.config.LOGGING_LEVEL = mlevel(options['log_level'])
+            app.config.LOGGING_LEVEL = mlevel(options['log_level'])
         except KeyError:
             self.die('Unknown level {0!r}. Please use one of {1}.'.format(
                         options['log_level'], '|'.join(LOG_LEVELS.keys())))
@@ -41,18 +42,20 @@ class WorkerCommand(BaseCommand):
         pid_file = normalize_path(options.get('pid_file', None))
         log_file = normalize_path(options.get('log_file', None))
 
-        self.app.config.LOG_REQUESTS = options.get('log_request', False)
-        self.app.config.LOG_FILE = log_file
+        app.config.LOG_REQUESTS = options.get('log_request', False)
+        app.config.LOG_FILE = log_file
 
-        worker = self.app.Worker(pidfile=pid_file,
-                                 daemonize=options.get('daemonize', False),
-                                 foreground=options.get('foreground', False),
-                                 args=args)
-        worker.start()
+        controller = app.ManagerController()
+        daemon = app.Daemon(controller=controller,
+                            pidfile=pid_file,
+                            daemonize=options.get('daemonize', False),
+                            foreground=options.get('foreground', False),
+                            args=args)
+        daemon.start()
 
 
 def main():
-    WorkerCommand().execute()
+    ManagerCommand().execute()
 
 
 if __name__ == '__main__':

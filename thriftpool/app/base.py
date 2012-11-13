@@ -3,6 +3,8 @@ from __future__ import absolute_import
 
 import inspect
 
+from pyuv import Loop
+
 from thriftworker.utils.decorators import cached_property
 from thriftworker.app import ThriftWorker
 
@@ -103,6 +105,10 @@ class ThriftPool(SubclassMixin):
             self.slots.register(**params)
 
     @cached_property
+    def loop(self):
+        return Loop.default_loop()
+
+    @cached_property
     def protocol_factory(self):
         """Create handler instance."""
         ProtocolFactory = symbol_by_name(self.config.PROTOCOL_FACTORY_CLS)
@@ -110,16 +116,21 @@ class ThriftPool(SubclassMixin):
 
     @cached_property
     def thriftworker(self):
-        return ThriftWorker(port_range=self.config.SERVICE_PORT_RANGE,
+        return ThriftWorker(loop=self.loop,
+                            port_range=self.config.SERVICE_PORT_RANGE,
                             protocol_factory=self.protocol_factory)
+
+    @cached_property
+    def ManagerController(self):
+        return self.subclass_with_self('thriftpool.controllers.manager:ManagerController')
 
     @cached_property
     def WorkerController(self):
         return self.subclass_with_self('thriftpool.controllers.worker:WorkerController')
 
     @cached_property
-    def Worker(self):
-        return self.subclass_with_self('thriftpool.app.worker:Worker')
+    def Daemon(self):
+        return self.subclass_with_self('thriftpool.app.daemon:Daemon')
 
     def register(self, *args, **options):
         """Register new handler."""

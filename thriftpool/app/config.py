@@ -18,6 +18,7 @@ DEFAULT_SETTINGS = dict(
     PROTOCOL_FACTORY_CLS='thrift.protocol.TBinaryProtocol'
                          ':TBinaryProtocolAcceleratedFactory',
     SERVICE_PORT_RANGE=(10000, 20000),
+    WORKERS_COUNT=2,
 )
 
 
