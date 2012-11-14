@@ -6,10 +6,7 @@ __all__ = ['rgetattr', 'camelcase_to_underscore', 'setproctitle']
 
 
 try:
-    from setproctitle import setproctitle as _setproctitle
-
-    def setproctitle(title):
-        _setproctitle(title)
+    from setproctitle import setproctitle
 except ImportError:
     def setproctitle(title):
         return

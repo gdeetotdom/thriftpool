@@ -61,7 +61,8 @@ class Workers(LogsMixin, LoopMixin):
             self._initialize_process(process)
         elif evtype == 'exit':
             self._critical('Process %d exited!', msg['pid'])
-            self.producers.pop(msg['pid'])
+            producer = self.producers.pop(msg['pid'])
+            producer.stop()
 
     @in_loop
     def start(self):
