@@ -15,18 +15,18 @@ from thriftpool.utils.mixin import LogsMixin
 logger = logging.getLogger(__name__)
 
 
-class Executor(LogsMixin, LoopMixin):
+class PerspectiveBroker(LogsMixin, LoopMixin):
     """Execute commands provided through pipe."""
 
     def __init__(self, app, controller):
         self.app = app
         self.controller = controller
-        super(Executor, self).__init__()
+        super(PerspectiveBroker, self).__init__()
 
     @cached_property
     def channel(self):
         channel = Pipe(self.loop)
-        channel.open(3)
+        channel.open(self.controller.control_fd)
         return channel
 
     @cached_property
@@ -44,10 +44,10 @@ class Executor(LogsMixin, LoopMixin):
         self.channel.close()
 
 
-class ExecutorComponent(StartStopComponent):
+class PerspectiveBrokerComponent(StartStopComponent):
 
-    name = 'worker.executor'
+    name = 'worker.broker'
     requires = ('services', 'acceptors', 'loop')
 
     def create(self, parent):
-        return Executor(parent.app, parent)
+        return PerspectiveBroker(parent.app, parent)

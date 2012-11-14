@@ -27,7 +27,7 @@ class Workers(LogsMixin, LoopMixin):
         self.listeners = listeners
         self.producers = {}
 
-    def create_arguments(self):
+    def _create_arguments(self):
         return dict(cmd=sys.executable,
                     args=['-c', '{0}'.format(self.script)],
                     redirect_output=['out', 'err'],
@@ -35,7 +35,7 @@ class Workers(LogsMixin, LoopMixin):
                     channels=self.listeners.channels,
                     redirect_input=True)
 
-    def create_producer(self, process):
+    def _create_producer(self, process):
         channel = process.streams['control'].channel
         producer = self.producers[process.id] = Producer(self.loop, channel, process)
         producer.start()
@@ -45,25 +45,31 @@ class Workers(LogsMixin, LoopMixin):
         stream = evtype == 'err' and sys.stderr or sys.stdout
         stream.write(msg['data'])
 
-    def initialize_process(self, process):
+    def _initialize_process(self, process):
         process.monitor_io('.', self._on_io)
         message = pickle.dumps(self.app)
         message = struct.pack('I', len(message)) + message
         process.write(message)
-        producer = self.create_producer(process)
-        producer.apply('ping')
+        producer = self._create_producer(process)
         producer.apply('change_title', args=['[thriftworker-{0}]'.format(process.id)])
         producer.apply('register_acceptors', args=[self.listeners.descriptors])
+
+    def _on_event(self, evtype, msg):
+        if evtype == 'spawn':
+            self._info('Process %d spawned!', msg['pid'])
+            process = self.manager.get_process(msg['pid'])
+            self._initialize_process(process)
+        elif evtype == 'exit':
+            self._critical('Process %d exited!', msg['pid'])
+            self.producers.pop(msg['pid'])
 
     @in_loop
     def start(self):
         manager = self.manager
+        manager.subscribe('.', self._on_event)
         manager.add_process(self.process_name,
                             numprocesses=self.app.config.WORKERS_COUNT,
-                            **self.create_arguments())
-        state = manager.get_process_state(self.process_name)
-        for process in state.list_processes():
-            self.initialize_process(process)
+                            **self._create_arguments())
         manager.start()
 
     @in_loop
@@ -72,6 +78,11 @@ class Workers(LogsMixin, LoopMixin):
             producer.stop()
         self.producers = {}
         self.manager.stop()
+
+    def apply(self, method_name, callback=None, args=None, kwargs=None):
+        """Run given method across all processes."""
+        for producer in self.producers.values():
+            producer.apply(method_name, callback, args, kwargs)
 
 
 class WorkersComponent(StartStopComponent):

@@ -204,5 +204,6 @@ class Producer(Transport):
         super(Producer, self).__init__(loop, channel)
 
     def apply(self, method_name, callback=None, args=None, kwargs=None):
+        assert self.process.active, "can't sent message to inactive process"
         callback = callback and partial(callback, self) or None
         self.write((method_name, args or [], kwargs or {}), callback)

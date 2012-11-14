@@ -38,7 +38,6 @@ class Acceptors(LogsMixin, LoopMixin):
         acceptor = self.acceptors[name] = self.Acceptor(name, pipe, **kwargs)
         acceptor.start()
 
-    @in_loop
     def start(self):
         pass
 
