@@ -169,6 +169,7 @@ class Transport(object):
     def stop(self):
         self._transmitter.stop()
         self._receiver.stop()
+        self._emitter.close()
 
 
 class Consumer(Transport):
