@@ -16,7 +16,7 @@ from .proto import Producer
 logger = logging.getLogger(__name__)
 
 
-class Workers(LogsMixin, LoopMixin):
+class ProcessManager(LogsMixin, LoopMixin):
 
     process_name = 'worker'
     script = 'from thriftpool.bin.thriftworker import main; main()'
@@ -26,6 +26,7 @@ class Workers(LogsMixin, LoopMixin):
         self.manager = manager
         self.listeners = listeners
         self.producers = {}
+        super(ProcessManager, self).__init__()
 
     def _create_arguments(self):
         return dict(cmd=sys.executable,
@@ -86,12 +87,10 @@ class Workers(LogsMixin, LoopMixin):
             producer.apply(method_name, callback, args, kwargs)
 
 
-class WorkersComponent(StartStopComponent):
+class ProcessManagerComponent(StartStopComponent):
 
-    name = 'manager.workers'
+    name = 'manager.process_manager'
     requires = ('loop', 'listeners')
 
     def create(self, parent):
-        workers = parent.workers = Workers(parent.app, parent.manager,
-                                           parent.listeners)
-        return workers
+        return ProcessManager(parent.app, parent.manager, parent.listeners)

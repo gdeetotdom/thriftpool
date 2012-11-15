@@ -16,8 +16,9 @@ class WorkerNamespace(Namespace):
 
     def modules(self):
         return ['thriftpool.components.loop',
-                'thriftpool.components.acceptors',
                 'thriftpool.components.services',
+                'thriftpool.components.worker',
+                'thriftpool.components.acceptors',
                 'thriftpool.components.broker']
 
 

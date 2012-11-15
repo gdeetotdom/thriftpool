@@ -47,7 +47,7 @@ class PerspectiveBroker(LogsMixin, LoopMixin):
 class PerspectiveBrokerComponent(StartStopComponent):
 
     name = 'worker.broker'
-    requires = ('services', 'acceptors', 'loop')
+    requires = ('acceptors', 'worker')
 
     def create(self, parent):
         return PerspectiveBroker(parent.app, parent)
