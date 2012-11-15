@@ -6,12 +6,12 @@ import inspect
 from pyuv import Loop
 
 from thriftworker.utils.decorators import cached_property
+from thriftworker.utils.imports import symbol_by_name
 from thriftworker.app import ThriftWorker
 
 from thriftpool.app.config import Configuration
 from thriftpool.exceptions import RegistrationError
 from thriftpool.utils.mixin import SubclassMixin
-from thriftpool.utils.imports import symbol_by_name
 
 from ._state import set_current_app
 

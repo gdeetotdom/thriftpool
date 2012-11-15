@@ -13,7 +13,7 @@ from collections import defaultdict
 from importlib import import_module
 from logging import getLogger
 
-from thriftpool.utils.imports import instantiate
+from thriftworker.utils.imports import instantiate
 from thriftpool.utils.mixin import LogsMixin
 from thriftpool.utils.structures import DependencyGraph
 

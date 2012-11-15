@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 class Initiator(LogsMixin, LoopMixin):
 
-    interval = 1.0
-    timeout = interval * 5
+    interval = 5.0
+    timeout = interval * 6
 
     def __init__(self, app, controller):
         self.app = app

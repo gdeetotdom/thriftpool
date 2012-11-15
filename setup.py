@@ -66,7 +66,7 @@ setup(name='thriftpool',
       url=meta['homepage'],
       license='BSD',
       packages=find_packages(),
-      install_requires=['thrift', 'thriftworker>=0.1.6', 'gaffer'],
+      install_requires=['thrift', 'thriftworker>=0.1.7', 'gaffer'],
       entry_points=entrypoints,
       zip_safe=False
 )
