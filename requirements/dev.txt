@@ -1,1 +1,2 @@
+cython
 git+https://github.com/blackwithwhite666/thriftworker.git#egg=thriftworker
