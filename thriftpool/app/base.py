@@ -15,11 +15,6 @@ from thriftpool.utils.mixin import SubclassMixin
 
 from ._state import set_current_app
 
-try:
-    from billiard.util import register_after_fork
-except ImportError:
-    register_after_fork = lambda *args: None
-
 __all__ = ['ThriftPool']
 
 
@@ -38,16 +33,10 @@ class ThriftPool(SubclassMixin):
     loader_cls = 'thriftpool.app.loader:Loader'
 
     def __init__(self):
-        # we must delete some entries after work
-        register_after_fork(self, self._after_fork)
         super(ThriftPool, self).__init__()
 
         # set current application as default
         set_current_app(self)
-
-    def _after_fork(self, obj_):
-        # Reset needed resources after fork."
-        pass
 
     def __reduce__(self):
         # Reduce only pickles the configuration changes,
@@ -119,6 +108,10 @@ class ThriftPool(SubclassMixin):
         return ThriftWorker(loop=self.loop,
                             port_range=self.config.SERVICE_PORT_RANGE,
                             protocol_factory=self.protocol_factory)
+
+    @property
+    def env(self):
+        return self.thriftworker.env
 
     @cached_property
     def ManagerController(self):

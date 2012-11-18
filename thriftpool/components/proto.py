@@ -14,10 +14,6 @@ from thriftworker.utils.decorators import cached_property
 logger = logging.getLogger(__name__)
 
 
-def handle_all(*args, **kwargs):
-    print args, kwargs
-
-
 class Proto(object):
     """Mixin that produce *encode* and *decode* methods. Each packet
     represented by simple structure:
@@ -69,17 +65,16 @@ class Receiver(Proto):
     WAIT_LENGTH = 1
     WAIT_PAYLOAD = 2
 
-    def __init__(self, channel, emitter):
-        self.channel = channel
+    def __init__(self, stream, emitter):
+        self.stream = stream
         self.emitter = emitter
         self._buf = BytesIO()
         self._state = self.WAIT_LENGTH
         self._received = self._length = 0
         super(Receiver, self).__init__()
 
-    def _on_read(self, handle, data, error):
-        if not data:
-            return
+    def _on_read(self, evtype, info):
+        data = info['data']
         if self._state == self.WAIT_LENGTH:
             # Try to receive packet length here.
             self._length, data = self._split_length(data)
@@ -95,7 +90,7 @@ class Receiver(Proto):
             self._buf = BytesIO()
             self._received = self._length = 0
             self._state = self.WAIT_LENGTH
-            self._on_read(handle, left, error)
+            self._on_read(evtype, dict(data=left))
 
     def _on_received(self, data):
         request_id, data = self._split_request_id(data)
@@ -103,17 +98,17 @@ class Receiver(Proto):
         self.emitter.publish("received", request_id=request_id, obj=obj)
 
     def start(self):
-        self.channel.start_read(self._on_read)
+        self.stream.subscribe(self._on_read)
 
     def stop(self):
-        self.channel.stop_read()
+        self.stream.unsubscribe(self._on_read)
 
 
 class Transmitter(Proto):
     """Write request to channel."""
 
-    def __init__(self, channel, emitter):
-        self.channel = channel
+    def __init__(self, stream, emitter):
+        self.stream = stream
         self.emitter = emitter
         self._requests = {}
         super(Transmitter, self).__init__()
@@ -123,7 +118,7 @@ class Transmitter(Proto):
         if callback is not None:
             self._requests[request_id] = callback
         data = self._encode(request_id, obj)
-        self.channel.write(data)
+        self.stream.write(data)
 
     def _on_received(self, evtype, request_id, obj):
         callback = self._requests.pop(request_id, None)
@@ -146,12 +141,12 @@ class Transport(object):
     Receiver = Receiver
     Transmitter = Transmitter
 
-    def __init__(self, loop, channel):
-        self.channel = channel
+    def __init__(self, loop, stream):
+        self.stream = stream
         self.loop = loop
         self._emitter = EventEmitter(loop)
-        self._receiver = self.Receiver(self.channel, self._emitter)
-        self._transmitter = self.Transmitter(self.channel, self._emitter)
+        self._receiver = self.Receiver(self.stream, self._emitter)
+        self._transmitter = self.Transmitter(self.stream, self._emitter)
 
     def write(self, obj, callback=None, request_id=None):
         self._transmitter.write(obj, callback, request_id)
@@ -174,9 +169,9 @@ class Transport(object):
 
 class Consumer(Transport):
 
-    def __init__(self, loop, channel, handler):
+    def __init__(self, loop, stream, handler):
         self.handler = handler
-        super(Consumer, self).__init__(loop, channel)
+        super(Consumer, self).__init__(loop, stream)
 
     def _on_incoming(self, evtype, request_id, obj):
         method_name, args, kwargs = obj
@@ -200,9 +195,9 @@ class Consumer(Transport):
 
 class Producer(Transport):
 
-    def __init__(self, loop, channel, process=None):
+    def __init__(self, loop, stream, process=None):
         self.process = process
-        super(Producer, self).__init__(loop, channel)
+        super(Producer, self).__init__(loop, stream)
 
     def apply(self, method_name, callback=None, args=None, kwargs=None):
         assert self.process.active, "can't sent message to inactive process"

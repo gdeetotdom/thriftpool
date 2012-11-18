@@ -33,12 +33,12 @@ class ProcessManager(LogsMixin, LoopMixin):
                     args=['-c', '{0}'.format(self.script)],
                     redirect_output=['out', 'err'],
                     custom_streams=['control'],
-                    channels=self.listeners.channels,
+                    custom_channels=self.listeners.channels,
                     redirect_input=True)
 
     def _create_producer(self, process):
-        channel = process.streams['control'].channel
-        producer = self.producers[process.id] = Producer(self.loop, channel, process)
+        stream = process.streams['control']
+        producer = self.producers[process.id] = Producer(self.loop, stream, process)
         producer.start()
         return producer
 

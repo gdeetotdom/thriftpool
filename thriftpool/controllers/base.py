@@ -12,7 +12,6 @@ from __future__ import absolute_import
 import uuid
 
 from logging import getLogger
-from threading import Event
 
 from thriftworker.utils.imports import qualname
 
@@ -43,7 +42,7 @@ class Controller(LogsMixin):
     def __init__(self):
         self._running = 0
         self._state = None
-        self._shutdown_complete = Event()
+        self._shutdown_complete = self.app.env.Event()
         self._finalize = Finalize(self, self.stop, exitpriority=1)
         self.ident = uuid.uuid4()
         self.on_before_init()
