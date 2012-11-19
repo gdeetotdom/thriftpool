@@ -6,9 +6,10 @@ import sys
 import struct
 import cPickle as pickle
 
-from pyuv import Timer
+from pyuv import Timer, Pipe
 
 from thriftworker.utils.loop import in_loop
+from thriftworker.utils.decorators import cached_property
 from thriftworker.utils.mixin import LoopMixin
 from thriftpool.utils.mixin import LogsMixin
 
@@ -18,19 +19,43 @@ from .proto import Producer
 logger = logging.getLogger(__name__)
 
 
+class RedirectStream(object):
+    """Try to write to stream asynchronous."""
+
+    def __init__(self, loop, stream):
+        self.stream = stream
+        try:
+            fd = stream.fileno()
+        except AttributeError:
+            self.channel = None
+        else:
+            channel = self.channel = Pipe(loop)
+            channel.open(fd)
+
+    def write(self, data):
+        if self.channel is not None:
+            self.channel.write(data)
+        else:
+            self.stream.write(data)
+
+    def close(self):
+        if self.channel is not None:
+            self.channel.close()
+
+
 class ProcessManager(LogsMixin, LoopMixin):
+    """Start and manage workers."""
 
     process_name = 'worker'
     gevent_monkey = 'from gevent.monkey import patch_all; patch_all();'
     script = 'from thriftpool.bin.thriftworker import main; main();'
 
-    def __init__(self, app, manager, listeners):
+    def __init__(self, app, manager, listeners, controller):
         self.app = app
         self.manager = manager
         self.listeners = listeners
         self.producers = {}
-        self.running = False
-        self._timers = []
+        self.controller = controller
         super(ProcessManager, self).__init__()
 
     def _create_arguments(self):
@@ -48,6 +73,14 @@ class ProcessManager(LogsMixin, LoopMixin):
                     custom_channels=self.listeners.channels,
                     redirect_input=True)
 
+    @cached_property
+    def _stdout(self):
+        return RedirectStream(self.loop, sys.stdout)
+
+    @cached_property
+    def _stderr(self):
+        return RedirectStream(self.loop, sys.stderr)
+
     def _create_producer(self, process):
         incoming = process.streams['incoming']
         outgoing = process.streams['outgoing']
@@ -55,41 +88,51 @@ class ProcessManager(LogsMixin, LoopMixin):
         producer.start()
         return producer
 
-    def _on_io(self, evtype, msg):
-        stream = evtype == 'err' and sys.stderr or sys.stdout
-        stream.write(msg['data'])
-
     def _initialize_process(self, process):
-        process.monitor_io('.', self._on_io)
-        message = pickle.dumps(self.app)
-        message = struct.pack('I', len(message)) + message
-        process.write(message)
+        timers = []
 
-        # Called when process ready
-        def on_initialization_done(producer, reply):
+        def on_io(evtype, msg):
+            (evtype == 'err' and self._stderr or self._stdout).write(msg['data'])
+
+        def create_producer():
+            incoming = process.streams['incoming']
+            outgoing = process.streams['outgoing']
+            producer = self.producers[process.id] = Producer(self.loop, incoming, outgoing, process)
+            producer.start()
+            return producer
+
+        def when_done(producer, reply):
             self._info('Process %d initialized!', process.id)
 
-        # Create producer only after some time to prevent flapping
-        def inner_callback(handle):
+        def bootstrap_process(handle):
             handle.close()
-            self._timers.remove(handle)
+            timers.remove(handle)
             # Process exited
             if not process.active:
                 return
             # Now we can create producer
-            producer = self._create_producer(process)
+            producer = create_producer()
             producer.apply('change_title',
                            args=['[thriftworker-{0}]'.format(process.id)])
             producer.apply('register_acceptors',
                            args=[self.listeners.descriptors],
-                           callback=on_initialization_done)
+                           callback=when_done)
 
+        # Redirect stdout & stderr.
+        process.monitor_io('.', on_io)
+        # Pass application to created process.
+        message = pickle.dumps(self.app)
+        message = struct.pack('I', len(message)) + message
+        process.write(message)
+        # Bootstrap process after some delay.
         timer = Timer(self.loop)
-        self._timers.append(timer)
-        timer.start(inner_callback, 1, 0)
+        timers.append(timer)
+        timer.start(bootstrap_process, 1, 0)
 
     def _on_event(self, evtype, msg):
-        if not self.running:
+        if msg['name'] != self.process_name:
+            return
+        if not self.controller.is_running:
             return
         if evtype == 'spawn':
             self._info('Process %d spawned!', msg['pid'])
@@ -102,7 +145,6 @@ class ProcessManager(LogsMixin, LoopMixin):
 
     @in_loop
     def start(self):
-        self.running = True
         manager = self.manager
         manager.subscribe('.', self._on_event)
         manager.add_process(self.process_name,
@@ -111,18 +153,19 @@ class ProcessManager(LogsMixin, LoopMixin):
         manager.start()
 
     @in_loop
-    def _real_stop(self):
-        self.running = False
+    def _stop(self):
         is_stopped = self.app.env.RealEvent()
         for producer in self.producers.values():
             producer.stop()
         self.producers = {}
         stop_callback = lambda *args: is_stopped.set()
         self.manager.stop(stop_callback)
+        self._stderr.close()
+        self._stdout.close()
         return is_stopped
 
     def stop(self):
-        is_stopped = self._real_stop()
+        is_stopped = self._stop()
         is_stopped.wait(5.0)
         if not is_stopped.is_set():
             logger.error('Timeout when stopping processes.')
@@ -139,4 +182,5 @@ class ProcessManagerComponent(StartStopComponent):
     requires = ('loop', 'listeners')
 
     def create(self, parent):
-        return ProcessManager(parent.app, parent.manager, parent.listeners)
+        return ProcessManager(parent.app, parent.manager,
+                              parent.listeners, parent)

@@ -130,12 +130,16 @@ class Controller(LogsMixin):
         self._state = self.TERMINATED
         self._shutdown_complete.set()
 
+    @property
+    def is_running(self):
+        return self._state == self.RUNNING
+
     def stop(self):
         """Graceful shutdown of the worker server."""
-        self._debug('Try to stop controller!')
+        self._info('Try to stop controller!')
         self._shutdown(warm=True)
 
     def terminate(self):
         """Not so graceful shutdown of the worker server."""
-        self._debug('Try to terminate controller!')
+        self._info('Try to terminate controller!')
         self._shutdown(warm=False)
