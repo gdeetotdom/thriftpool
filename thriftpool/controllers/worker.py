@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-import sys
 from logging import getLogger
 
 from thriftpool.utils.other import setproctitle

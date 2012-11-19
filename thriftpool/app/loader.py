@@ -67,3 +67,7 @@ class Loader(object):
     def on_shutdown(self):
         """Called after controller shutdown."""
         signals.app_shutdown.send(sender=self, app=self.app)
+
+    def after_unpickling(self):
+        """Called after application was unpickled."""
+        pass

@@ -18,10 +18,13 @@ from ._state import set_current_app
 __all__ = ['ThriftPool']
 
 
-def _unpickle_app(cls, changes, slots):
+def _unpickle_app(cls, changes, slots, before_unpickling):
+    for fn, args, kwargs in before_unpickling:
+        fn(*args, **kwargs)
     app = cls()
     app.config.update(changes)
     app.slots = slots
+    app.loader.after_unpickling()
     return app
 
 
@@ -33,6 +36,7 @@ class ThriftPool(SubclassMixin):
     loader_cls = 'thriftpool.app.loader:Loader'
 
     def __init__(self):
+        self._before_unpickling = []
         super(ThriftPool, self).__init__()
 
         # set current application as default
@@ -43,7 +47,12 @@ class ThriftPool(SubclassMixin):
         # so the default configuration doesn't have to be passed
         # between processes.
         return (_unpickle_app, (self.__class__, self.config._changes,
-                                self.slots))
+                                self.slots, self._before_unpickling))
+
+    def run_before_unpickling(self, fn, *args, **kwargs):
+        """Run given function before application was unpickled."""
+        assert callable(fn), '{0!r} not callable'.format(fn)
+        self._before_unpickling.append((fn, args, kwargs))
 
     @cached_property
     def Loader(self):
