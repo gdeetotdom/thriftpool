@@ -29,8 +29,9 @@ class WorkerController(Controller):
 
     acceptors = None
 
-    def __init__(self, start_fd=None):
-        self.outgoing_fd = start_fd or (sys.stderr.fileno() + 1)
+    def __init__(self, start_fd):
+        self.handshake_fd = start_fd
+        self.outgoing_fd = self.handshake_fd + 1
         self.incoming_fd = self.outgoing_fd + 1
         super(WorkerController, self).__init__()
 

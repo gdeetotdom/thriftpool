@@ -4,34 +4,41 @@ import os
 import sys
 import struct
 import cPickle
+from select import select
 
 from thriftpool.bin.base import BaseCommand
+
+
+def read_app_from_stream(stream, timeout=5):
+    """Read application from given stream and return it."""
+    rlist, _, _ = select([stream], [], [], timeout)
+    if not rlist:
+        raise RuntimeError("Can't read app from {0!r}.".format(stream))
+    length = struct.unpack('I', stream.read(4))[0]
+    assert length > 0, 'wrong message length provided'
+    app = cPickle.loads(stream.read(length))
+    return app
+
+
+def reopen_streams():
+    """Reopen streams here to prevent buffering."""
+    sys.stdin = os.fdopen(sys.stdin.fileno(), 'r', 0)
+    sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
+    sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', 0)
 
 
 class WorkerCommand(BaseCommand):
     """Start ThiftPool worker."""
 
-    def app_from_stdin(self):
-        stream = sys.stdin
-        length = struct.unpack('I', stream.read(4))[0]
-        assert length > 0, 'wrong message length provided'
-        app = cPickle.loads(stream.read(length))
-        return app
-
-    def reopen_streams(self):
-        """Reopen streams here to prevent buffering."""
-        sys.stdin = os.fdopen(0, 'r', 0)
-        sys.stdout = os.fdopen(1, 'w', 0)
-        sys.stderr = os.fdopen(2, 'w', 0)
-
     def run(self, *args, **options):
-        self.reopen_streams()
-        app = self.app_from_stdin()
-        controller = app.WorkerController()
+        stream = os.fdopen(sys.stderr.fileno() + 1, 'w+', 0)
+        app = read_app_from_stream(stream)
+        controller = app.WorkerController(stream.fileno())
         controller.start()
 
 
 def main():
+    reopen_streams()
     WorkerCommand().execute()
 
 

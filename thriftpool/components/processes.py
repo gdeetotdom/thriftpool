@@ -6,7 +6,7 @@ import sys
 import struct
 import cPickle as pickle
 
-from pyuv import Timer, Pipe
+from pyuv import Pipe
 
 from thriftworker.utils.loop import in_loop
 from thriftworker.utils.decorators import cached_property
@@ -47,6 +47,9 @@ class ProcessManager(LogsMixin, LoopMixin):
     """Start and manage workers."""
 
     process_name = 'worker'
+    name_template = '[thriftworker-{0}]' \
+                    ' -c {1.CONCURRENCY}' \
+                    ' -k {1.WORKER_TYPE}'
     gevent_monkey = 'from gevent.monkey import patch_all; patch_all();'
     script = 'from thriftpool.bin.thriftworker import main; main();'
 
@@ -69,7 +72,7 @@ class ProcessManager(LogsMixin, LoopMixin):
         args = ['-c', '{0}'.format(startup_line)]
         return dict(cmd=sys.executable, args=args,
                     redirect_output=['out', 'err'],
-                    custom_streams=['incoming', 'outgoing'],
+                    custom_streams=['handshake', 'incoming', 'outgoing'],
                     custom_channels=self.listeners.channels,
                     redirect_input=True)
 
@@ -88,46 +91,48 @@ class ProcessManager(LogsMixin, LoopMixin):
         producer.start()
         return producer
 
-    def _initialize_process(self, process):
-        timers = []
+    def _bootstrap_process(self, process):
+        # Now we can create producer.
+        incoming = process.streams['incoming']
+        outgoing = process.streams['outgoing']
+        producer = self.producers[process.id] = \
+            Producer(self.loop, incoming, outgoing, process)
+        producer.start()
+        # Create name for process.
+        create_name = (lambda: self.name_template
+                       .format(process.id, self.app.config))
+        # Notify about process initialization.
+        bootstrap_done = (lambda producer, reply:
+                          self._info('Process %d initialized!', process.id))
+        # And bootstrap remote process.
+        producer.apply('change_title',
+                       args=[create_name()])
+        producer.apply('register_acceptors',
+                       args=[self.listeners.descriptors],
+                       callback=bootstrap_done)
 
-        def on_io(evtype, msg):
-            (evtype == 'err' and self._stderr or self._stdout).write(msg['data'])
+    def _do_handshake(self, process):
+        # Pass application to created process.
+        stream = process.streams['handshake']
+        message = pickle.dumps(self.app)
+        stream.write(struct.pack('I', len(message)) + message)
 
-        def create_producer():
-            incoming = process.streams['incoming']
-            outgoing = process.streams['outgoing']
-            producer = self.producers[process.id] = Producer(self.loop, incoming, outgoing, process)
-            producer.start()
-            return producer
-
-        def when_done(producer, reply):
-            self._info('Process %d initialized!', process.id)
-
-        def bootstrap_process(handle):
-            handle.close()
-            timers.remove(handle)
-            # Process exited
+        def handshake_done(evtype, info):
+            stream.unsubscribe(handshake_done)
+            # Process exited and we do the same.
             if not process.active:
                 return
-            # Now we can create producer
-            producer = create_producer()
-            producer.apply('change_title',
-                           args=['[thriftworker-{0}]'.format(process.id)])
-            producer.apply('register_acceptors',
-                           args=[self.listeners.descriptors],
-                           callback=when_done)
+            self._bootstrap_process(process)
 
-        # Redirect stdout & stderr.
-        process.monitor_io('.', on_io)
-        # Pass application to created process.
-        message = pickle.dumps(self.app)
-        message = struct.pack('I', len(message)) + message
-        process.write(message)
-        # Bootstrap process after some delay.
-        timer = Timer(self.loop)
-        timers.append(timer)
-        timer.start(bootstrap_process, 1, 0)
+        # Wait for worker answer.
+        stream.subscribe(handshake_done)
+
+    def _redirect_io(self, process):
+        """Redirect stdout & stderr."""
+        monitor_io = (lambda evtype, msg:
+                      (evtype == 'err' and self._stderr or self._stdout)
+                      .write(msg['data']))
+        process.monitor_io('.', monitor_io)
 
     def _on_event(self, evtype, msg):
         if msg['name'] != self.process_name:
@@ -137,7 +142,8 @@ class ProcessManager(LogsMixin, LoopMixin):
         if evtype == 'spawn':
             self._info('Process %d spawned!', msg['pid'])
             process = self.manager.get_process(msg['pid'])
-            self._initialize_process(process)
+            self._redirect_io(process)
+            self._do_handshake(process)
         elif evtype == 'exit':
             self._critical('Process %d exited!', msg['pid'])
             producer = self.producers.pop(msg['pid'], None)
