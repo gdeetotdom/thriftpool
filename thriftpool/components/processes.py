@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 class ProcessManager(LogsMixin, LoopMixin):
 
     process_name = 'worker'
-    script = 'from thriftpool.bin.thriftworker import main; main()'
+    gevent_monkey = 'from gevent.monkey import patch_all; patch_all();'
+    script = 'from thriftpool.bin.thriftworker import main; main();'
 
     def __init__(self, app, manager, listeners):
         self.app = app
@@ -30,8 +31,15 @@ class ProcessManager(LogsMixin, LoopMixin):
         super(ProcessManager, self).__init__()
 
     def _create_arguments(self):
-        return dict(cmd=sys.executable,
-                    args=['-c', '{0}'.format(self.script)],
+        worker_type = self.app.config.WORKER_TYPE
+        if worker_type == 'gevent':
+            startup_line = '{0} {1}'.format(self.gevent_monkey, self.script)
+        elif worker_type == 'sync':
+            startup_line = self.script
+        else:
+            raise NotImplementedError()
+        args = ['-c', '{0}'.format(startup_line)]
+        return dict(cmd=sys.executable, args=args,
                     redirect_output=['out', 'err'],
                     custom_streams=['control'],
                     custom_channels=self.listeners.channels,
@@ -92,6 +100,8 @@ class ProcessManager(LogsMixin, LoopMixin):
     def stop(self):
         is_stopped = self._real_stop()
         is_stopped.wait(5.0)
+        if not is_stopped.is_set():
+            logger.error('Timeout when stopping processes.')
 
     def apply(self, method_name, callback=None, args=None, kwargs=None):
         """Run given method across all processes."""

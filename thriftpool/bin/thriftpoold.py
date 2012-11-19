@@ -16,10 +16,10 @@ class ManagerCommand(BaseCommand):
                action='store', type=int),
         Option('-w', '--workers', help='Set workers count',
                action='store', type=int),
+        Option('-k', '--worker-type', help='Set type of worker',
+               action='store', type=str, choices=['sync', 'gevent']),
         Option('-l', '--log-level',
-               help='Logging level, choose between `DEBUG`,'
-                    ' `INFO`, `WARNING`, `ERROR`, `CRITICAL`,'
-                    ' or `FATAL`.',
+               help='Logging level', choices=LOG_LEVELS.keys(),
                action='store', default='INFO'),
         Option('-f', '--log-file', help='Specify log file',
                action='store'),
@@ -53,6 +53,8 @@ class ManagerCommand(BaseCommand):
             app.config.WORKERS = options['workers']
         if options['concurrency']:
             app.config.CONCURRENCY = options['concurrency']
+        if options['worker_type']:
+            app.config.WORKER_TYPE = options['worker_type']
 
         controller = app.ManagerController()
         daemon = app.Daemon(controller=controller,
