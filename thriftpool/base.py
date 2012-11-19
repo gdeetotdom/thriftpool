@@ -20,7 +20,7 @@ class OptionsMeta(type):
 
     def __new__(mcs, name, bases, attrs):
         # Create default options for new class.
-        attrs['meta'] = meta = Options(abstract=False)
+        attrs['meta'] = meta = Options(abstract=False, enabled=True)
         # Try to inherit from parent class.
         for base in bases[::-1]:
             try:
@@ -28,6 +28,7 @@ class OptionsMeta(type):
             except AttributeError:
                 pass
         meta.abstract = False
+        meta.enabled = True
         # Fill options.
         try:
             options = attrs['options']
@@ -49,7 +50,7 @@ class HandlerMeta(OptionsMeta):
             raise RegistrationError('Class {0!r} missed "options" attribute.'.
                                     format(name))
         klass = super(HandlerMeta, mcs).__new__(mcs, name, bases, attrs)
-        if klass.meta.abstract:
+        if klass.meta.abstract or not klass.meta.enabled:
             # Don't register abstract classes.
             return klass
         return thriftpool.register(**klass.meta)(klass)
