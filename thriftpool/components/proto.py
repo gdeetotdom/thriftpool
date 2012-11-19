@@ -141,12 +141,11 @@ class Transport(object):
     Receiver = Receiver
     Transmitter = Transmitter
 
-    def __init__(self, loop, stream):
-        self.stream = stream
+    def __init__(self, loop, incoming, outgoing):
         self.loop = loop
         self._emitter = EventEmitter(loop)
-        self._receiver = self.Receiver(self.stream, self._emitter)
-        self._transmitter = self.Transmitter(self.stream, self._emitter)
+        self._receiver = self.Receiver(incoming, self._emitter)
+        self._transmitter = self.Transmitter(outgoing, self._emitter)
 
     def write(self, obj, callback=None, request_id=None):
         self._transmitter.write(obj, callback, request_id)
@@ -169,9 +168,9 @@ class Transport(object):
 
 class Consumer(Transport):
 
-    def __init__(self, loop, stream, handler):
+    def __init__(self, loop, incoming, outgoing, handler):
         self.handler = handler
-        super(Consumer, self).__init__(loop, stream)
+        super(Consumer, self).__init__(loop, incoming, outgoing)
 
     def _on_incoming(self, evtype, request_id, obj):
         method_name, args, kwargs = obj
@@ -195,9 +194,9 @@ class Consumer(Transport):
 
 class Producer(Transport):
 
-    def __init__(self, loop, stream, process=None):
+    def __init__(self, loop, incoming, outgoing, process=None):
         self.process = process
-        super(Producer, self).__init__(loop, stream)
+        super(Producer, self).__init__(loop, incoming, outgoing)
 
     def apply(self, method_name, callback=None, args=None, kwargs=None):
         assert self.process.active, "can't sent message to inactive process"

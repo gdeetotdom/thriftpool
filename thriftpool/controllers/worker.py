@@ -28,8 +28,9 @@ class WorkerController(Controller):
 
     acceptors = None
 
-    def __init__(self, control_fd=None):
-        self.control_fd = control_fd or (sys.stderr.fileno() + 1)
+    def __init__(self, start_fd=None):
+        self.outgoing_fd = start_fd or (sys.stderr.fileno() + 1)
+        self.incoming_fd = self.outgoing_fd + 1
         super(WorkerController, self).__init__()
 
     def on_before_init(self):
@@ -61,5 +62,5 @@ class WorkerController(Controller):
         """Register all existed acceptors with given descriptors."""
         acceptors = self.acceptors
         for descriptor, name in descriptors.items():
-            descriptor += self.control_fd + 1
+            descriptor += self.incoming_fd + 1
             acceptors.add_acceptor(descriptor, name)

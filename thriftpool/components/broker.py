@@ -66,23 +66,31 @@ class PerspectiveBroker(LogsMixin, LoopMixin):
         super(PerspectiveBroker, self).__init__()
 
     @cached_property
-    def stream(self):
-        return Stream(self.loop, self.controller.control_fd)
+    def incoming_stream(self):
+        return Stream(self.loop, self.controller.incoming_fd)
+
+    @cached_property
+    def outgoing_stream(self):
+        return Stream(self.loop, self.controller.outgoing_fd)
 
     @cached_property
     def consumer(self):
-        return Consumer(self.loop, self.stream,
+        return Consumer(self.loop,
+                        incoming=self.incoming_stream,
+                        outgoing=self.outgoing_stream,
                         handler=self.controller)
 
     @in_loop
     def start(self):
-        self.stream.start()
+        self.incoming_stream.start()
+        self.outgoing_stream.start()
         self.consumer.start()
 
     @in_loop
     def stop(self):
         self.consumer.stop()
-        self.stream.stop(all_events=True)
+        self.incoming_stream.stop(all_events=True)
+        self.outgoing_stream.stop(all_events=True)
 
 
 class PerspectiveBrokerComponent(StartStopComponent):

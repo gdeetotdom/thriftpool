@@ -6,6 +6,8 @@ import sys
 import struct
 import cPickle as pickle
 
+from pyuv import Timer
+
 from thriftworker.utils.loop import in_loop
 from thriftworker.utils.mixin import LoopMixin
 from thriftpool.utils.mixin import LogsMixin
@@ -28,6 +30,7 @@ class ProcessManager(LogsMixin, LoopMixin):
         self.listeners = listeners
         self.producers = {}
         self.running = False
+        self._timers = []
         super(ProcessManager, self).__init__()
 
     def _create_arguments(self):
@@ -41,13 +44,14 @@ class ProcessManager(LogsMixin, LoopMixin):
         args = ['-c', '{0}'.format(startup_line)]
         return dict(cmd=sys.executable, args=args,
                     redirect_output=['out', 'err'],
-                    custom_streams=['control'],
+                    custom_streams=['incoming', 'outgoing'],
                     custom_channels=self.listeners.channels,
                     redirect_input=True)
 
     def _create_producer(self, process):
-        stream = process.streams['control']
-        producer = self.producers[process.id] = Producer(self.loop, stream, process)
+        incoming = process.streams['incoming']
+        outgoing = process.streams['outgoing']
+        producer = self.producers[process.id] = Producer(self.loop, incoming, outgoing, process)
         producer.start()
         return producer
 
@@ -60,9 +64,29 @@ class ProcessManager(LogsMixin, LoopMixin):
         message = pickle.dumps(self.app)
         message = struct.pack('I', len(message)) + message
         process.write(message)
-        producer = self._create_producer(process)
-        producer.apply('change_title', args=['[thriftworker-{0}]'.format(process.id)])
-        producer.apply('register_acceptors', args=[self.listeners.descriptors])
+
+        # Called when process ready
+        def on_initialization_done(producer, reply):
+            self._info('Process %d initialized!', process.id)
+
+        # Create producer only after some time to prevent flapping
+        def inner_callback(handle):
+            handle.close()
+            self._timers.remove(handle)
+            # Process exited
+            if not process.active:
+                return
+            # Now we can create producer
+            producer = self._create_producer(process)
+            producer.apply('change_title',
+                           args=['[thriftworker-{0}]'.format(process.id)])
+            producer.apply('register_acceptors',
+                           args=[self.listeners.descriptors],
+                           callback=on_initialization_done)
+
+        timer = Timer(self.loop)
+        self._timers.append(timer)
+        timer.start(inner_callback, 1, 0)
 
     def _on_event(self, evtype, msg):
         if not self.running:
@@ -73,7 +97,7 @@ class ProcessManager(LogsMixin, LoopMixin):
             self._initialize_process(process)
         elif evtype == 'exit':
             self._critical('Process %d exited!', msg['pid'])
-            producer = self.producers.pop(msg['pid'])
+            producer = self.producers.pop(msg['pid'], None)
             producer.stop()
 
     @in_loop
