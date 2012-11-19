@@ -12,6 +12,10 @@ class ManagerCommand(BaseCommand):
     options = (
         Option('--log-request', help='Log all incoming requests',
                action='store_true'),
+        Option('-c', '--concurrency', help='Set concurrency level',
+               action='store', type=int),
+        Option('-w', '--workers', help='Set workers count',
+               action='store', type=int),
         Option('-l', '--log-level',
                help='Logging level, choose between `DEBUG`,'
                     ' `INFO`, `WARNING`, `ERROR`, `CRITICAL`,'
@@ -44,6 +48,11 @@ class ManagerCommand(BaseCommand):
 
         app.config.LOG_REQUESTS = options.get('log_request', False)
         app.config.LOG_FILE = log_file
+
+        if options['workers']:
+            app.config.WORKERS = options['workers']
+        if options['concurrency']:
+            app.config.CONCURRENCY = options['concurrency']
 
         controller = app.ManagerController()
         daemon = app.Daemon(controller=controller,

@@ -108,7 +108,7 @@ class ThriftPool(SubclassMixin):
         return ThriftWorker(loop=self.loop,
                             port_range=self.config.SERVICE_PORT_RANGE,
                             protocol_factory=self.protocol_factory,
-                            pool_size=10)
+                            pool_size=self.config.CONCURRENCY)
 
     @property
     def env(self):

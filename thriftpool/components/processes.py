@@ -26,6 +26,7 @@ class ProcessManager(LogsMixin, LoopMixin):
         self.manager = manager
         self.listeners = listeners
         self.producers = {}
+        self.running = False
         super(ProcessManager, self).__init__()
 
     def _create_arguments(self):
@@ -56,6 +57,8 @@ class ProcessManager(LogsMixin, LoopMixin):
         producer.apply('register_acceptors', args=[self.listeners.descriptors])
 
     def _on_event(self, evtype, msg):
+        if not self.running:
+            return
         if evtype == 'spawn':
             self._info('Process %d spawned!', msg['pid'])
             process = self.manager.get_process(msg['pid'])
@@ -67,19 +70,28 @@ class ProcessManager(LogsMixin, LoopMixin):
 
     @in_loop
     def start(self):
+        self.running = True
         manager = self.manager
         manager.subscribe('.', self._on_event)
         manager.add_process(self.process_name,
-                            numprocesses=self.app.config.WORKERS_COUNT,
+                            numprocesses=self.app.config.WORKERS,
                             **self._create_arguments())
         manager.start()
 
     @in_loop
-    def stop(self):
+    def _real_stop(self):
+        self.running = False
+        is_stopped = self.app.env.RealEvent()
         for producer in self.producers.values():
             producer.stop()
         self.producers = {}
-        self.manager.stop()
+        stop_callback = lambda *args: is_stopped.set()
+        self.manager.stop(stop_callback)
+        return is_stopped
+
+    def stop(self):
+        is_stopped = self._real_stop()
+        is_stopped.wait(5.0)
 
     def apply(self, method_name, callback=None, args=None, kwargs=None):
         """Run given method across all processes."""
