@@ -93,11 +93,7 @@ class ProcessManager(LogsMixin, LoopMixin):
 
     def _bootstrap_process(self, process):
         # Now we can create producer.
-        incoming = process.streams['incoming']
-        outgoing = process.streams['outgoing']
-        producer = self.producers[process.id] = \
-            Producer(self.loop, incoming, outgoing, process)
-        producer.start()
+        producer = self._create_producer(process)
         # Create name for process.
         create_name = (lambda: self.name_template
                        .format(process.id, self.app.config))
