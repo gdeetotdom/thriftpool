@@ -11,10 +11,6 @@ from thriftpool.utils.platforms import EX_FAILURE, EX_OK
 from thriftpool.utils.term import colored, isatty
 
 
-# always enable DeprecationWarnings, so our users can see them.
-warnings.simplefilter('once', Warning, 0)
-
-
 class Option(object):
     """Describe an option for parser."""
 
