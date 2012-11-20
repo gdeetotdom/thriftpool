@@ -16,8 +16,11 @@ class ProcessorMixin(object):
             except KeyError:
                 raise TApplicationException(TApplicationException.UNKNOWN_METHOD,
                                             'Unknown function %s' % (name))
-            else:
+            try:
                 fn(self, seqid, iprot, oprot)
+            except AttributeError:
+                raise TApplicationException(TApplicationException.UNKNOWN_METHOD,
+                                            'Unknown function %s' % (name))
 
         except TApplicationException as exc:
             oprot.writeMessageBegin(name, TMessageType.EXCEPTION, seqid)
