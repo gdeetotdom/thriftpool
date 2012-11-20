@@ -27,10 +27,6 @@ class ManagerController(Controller):
 
     listeners = None
 
-    def on_before_init(self):
-        self.app.finalize()
-        super(ManagerController, self).on_before_init()
-
     @cached_property
     def manager(self):
         return Manager(loop=self.app.loop)

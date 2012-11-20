@@ -34,27 +34,6 @@ class WorkerController(Controller):
         self.incoming_fd = self.outgoing_fd + 1
         super(WorkerController, self).__init__()
 
-    def on_before_init(self):
-        self.app.loader.on_before_init()
-        self.app.finalize()
-        super(WorkerController, self).on_before_init()
-
-    def on_start(self):
-        self.app.loader.on_start()
-        super(WorkerController, self).on_start()
-
-    def on_shutdown(self):
-        self.app.loader.on_shutdown()
-        super(WorkerController, self).on_shutdown()
-
-    def after_start(self):
-        self.app.loader.after_start()
-        super(WorkerController, self).after_start()
-
-    def ping(self):
-        """Ping-pong. Return unique process identification."""
-        return self.ident
-
     def change_title(self, name):
         """Change process title."""
         setproctitle(name)

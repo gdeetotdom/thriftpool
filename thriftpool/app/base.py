@@ -37,10 +37,15 @@ class ThriftPool(SubclassMixin):
 
     def __init__(self):
         self._before_unpickling = []
+        self._finalized = False
         super(ThriftPool, self).__init__()
 
         # set current application as default
         set_current_app(self)
+
+    @cached_property
+    def _finalize_mutex(self):
+        return self.env.RLock()
 
     def __reduce__(self):
         # Reduce only pickles the configuration changes,
@@ -94,13 +99,17 @@ class ThriftPool(SubclassMixin):
 
     def finalize(self):
         """Make some steps before application startup."""
-        # Setup logging for whole application.
-        self.log.setup()
-        # Load all needed modules.
-        self.loader.preload_modules()
-        # Register existed services.
-        for params in self.config.SLOTS:
-            self.slots.register(**params)
+        with self._finalize_mutex:
+            if self._finalized:
+                return
+            # Setup logging for whole application.
+            self.log.setup()
+            # Load all needed modules.
+            self.loader.preload_modules()
+            # Register existed services.
+            for params in self.config.SLOTS:
+                self.slots.register(**params)
+            self._finalized = True
 
     @cached_property
     def loop(self):

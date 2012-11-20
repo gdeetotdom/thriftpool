@@ -60,16 +60,17 @@ class Controller(LogsMixin):
         signals['SIGQUIT'] = lambda signum, frame: self.terminate()
 
     def on_before_init(self):
-        pass
+        self.app.loader.on_before_init()
+        self.app.finalize()
 
     def on_start(self):
-        pass
+        self.app.loader.on_start()
 
     def after_start(self):
-        pass
+        self.app.loader.after_start()
 
     def on_shutdown(self):
-        pass
+        self.app.loader.on_shutdown()
 
     def start(self):
         self._state = self.RUNNING
