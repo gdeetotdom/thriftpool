@@ -173,7 +173,7 @@ class ProcessManager(LogsMixin, LoopMixin):
 
     def stop(self):
         self._pre_stop()
-        self._is_stopped.wait(10.0)
+        self._is_stopped.wait(30.0)
         if not self._is_stopped.is_set():
             logger.error('Timeout when stopping processes.')
         self._post_stop()
