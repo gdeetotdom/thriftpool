@@ -39,8 +39,8 @@ class RedirectStream(object):
             self.stream.write(data)
 
     def close(self):
-        if self.channel is not None:
-            self.channel.close()
+        if self.channel is not None and self.channel.active:
+            self.channel.stop()
 
 
 class ProcessManager(LogsMixin, LoopMixin):
@@ -75,6 +75,10 @@ class ProcessManager(LogsMixin, LoopMixin):
                     custom_streams=['handshake', 'incoming', 'outgoing'],
                     custom_channels=self.listeners.channels,
                     redirect_input=True)
+
+    @cached_property
+    def _is_stopped(self):
+        return self.app.env.RealEvent()
 
     @cached_property
     def _stdout(self):
@@ -155,22 +159,24 @@ class ProcessManager(LogsMixin, LoopMixin):
         manager.start()
 
     @in_loop
-    def _stop(self):
-        is_stopped = self.app.env.RealEvent()
+    def _pre_stop(self):
         for producer in self.producers.values():
             producer.stop()
         self.producers = {}
-        stop_callback = lambda *args: is_stopped.set()
+        stop_callback = lambda *args: self._is_stopped.set()
         self.manager.stop(stop_callback)
+
+    @in_loop
+    def _post_stop(self):
         self._stderr.close()
         self._stdout.close()
-        return is_stopped
 
     def stop(self):
-        is_stopped = self._stop()
-        is_stopped.wait(5.0)
-        if not is_stopped.is_set():
+        self._pre_stop()
+        self._is_stopped.wait(10.0)
+        if not self._is_stopped.is_set():
             logger.error('Timeout when stopping processes.')
+        self._post_stop()
 
     def apply(self, method_name, callback=None, args=None, kwargs=None):
         """Run given method across all processes."""

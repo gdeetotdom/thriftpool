@@ -32,6 +32,7 @@ class Controller(LogsMixin):
 
     wait_for_shutdown = True
     register_signals = True
+    ignore_interrupt = False
 
     RUNNING = 0x1
     CLOSED = 0x2
@@ -51,7 +52,10 @@ class Controller(LogsMixin):
 
     def register_signal_handler(self):
         self._debug('Register signal handlers')
-        signals['SIGINT'] = lambda signum, frame: self.stop()
+        if not self.ignore_interrupt:
+            signals['SIGINT'] = lambda signum, frame: self.stop()
+        else:
+            signals['SIGINT'] = lambda signum, frame: None
         signals['SIGTERM'] = lambda signum, frame: self.stop()
         signals['SIGQUIT'] = lambda signum, frame: self.terminate()
 

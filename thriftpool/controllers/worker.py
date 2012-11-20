@@ -15,7 +15,6 @@ class WorkerNamespace(Namespace):
 
     def modules(self):
         return ['thriftpool.components.loop',
-                'thriftpool.components.signals',
                 'thriftpool.components.services',
                 'thriftpool.components.worker',
                 'thriftpool.components.acceptors',
@@ -26,6 +25,7 @@ class WorkerController(Controller):
 
     Namespace = WorkerNamespace
 
+    ignore_interrupt = True
     acceptors = None
 
     def __init__(self, start_fd):

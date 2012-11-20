@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 import os
 
-from thriftpool.utils.logs import mlevel, LOG_LEVELS
+from thriftpool.utils.logs import mlevel, LOG_LEVELS, LEVELS
 from thriftpool.bin.base import BaseCommand, Option
 
 
@@ -19,7 +19,7 @@ class ManagerCommand(BaseCommand):
         Option('-k', '--worker-type', help='Set type of worker',
                action='store', type=str, choices=['sync', 'gevent']),
         Option('-l', '--log-level',
-               help='Logging level', choices=LOG_LEVELS.keys(),
+               help='Logging level', choices=LEVELS,
                action='store', default='INFO'),
         Option('-f', '--log-file', help='Specify log file',
                action='store'),

@@ -25,6 +25,7 @@ LOG_LEVELS = {
     'CRITICAL': logging.CRITICAL,
     'FATAL': logging.FATAL,
 }
+LEVELS = {k.lower() for k in LOG_LEVELS.keys()}
 
 
 def mlevel(level):

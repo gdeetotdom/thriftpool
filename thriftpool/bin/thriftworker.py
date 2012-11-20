@@ -9,14 +9,14 @@ from select import select
 from thriftpool.bin.base import BaseCommand
 
 
-def read_app_from_stream(stream, timeout=5):
+def read_app_from_fd(fd, timeout=5):
     """Read application from given stream and return it."""
-    rlist, _, _ = select([stream], [], [], timeout)
+    rlist, _, _ = select([fd], [], [], timeout)
     if not rlist:
-        raise RuntimeError("Can't read app from {0!r}.".format(stream))
-    length = struct.unpack('I', stream.read(4))[0]
+        raise RuntimeError("Can't read app from {0!r}.".format(fd))
+    length = struct.unpack('I', os.read(fd, 4))[0]
     assert length > 0, 'wrong message length provided'
-    app = cPickle.loads(stream.read(length))
+    app = cPickle.loads(os.read(fd, length))
     return app
 
 
@@ -31,9 +31,9 @@ class WorkerCommand(BaseCommand):
     """Start ThiftPool worker."""
 
     def run(self, *args, **options):
-        stream = os.fdopen(sys.stderr.fileno() + 1, 'w+', 0)
-        app = read_app_from_stream(stream)
-        controller = app.WorkerController(stream.fileno())
+        stream_fd = sys.stderr.fileno() + 1
+        app = read_app_from_fd(stream_fd)
+        controller = app.WorkerController(stream_fd)
         controller.start()
 
 

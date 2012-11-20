@@ -20,8 +20,11 @@ class Listeners(LogsMixin):
 
     def __init__(self, app):
         self.app = app
-        self.pool = []
+        self._pool = []
         super(Listeners, self).__init__()
+
+    def __iter__(self):
+        return iter(self._pool)
 
     @cached_property
     def Listener(self):
@@ -30,15 +33,47 @@ class Listeners(LogsMixin):
 
     @cached_property
     def channels(self):
-        return [listener.channel for listener, _ in self.pool]
+        """Return list of registered channels. Useful to pass them
+        to child process.
+
+        """
+        return [listener.channel for listener, _ in self._pool]
 
     @cached_property
     def descriptors(self):
-        return {i: listener.name for i, (listener, _) in enumerate(self.pool)}
+        """Return dictionary of relative file descriptor of each listener."""
+        return {i: listener.name for i, (listener, _) in enumerate(self._pool)}
+
+    def register(self, slot):
+        """Register new listener with given parameters."""
+        name, host, port, backlog = slot.name, slot.listener.host, \
+            slot.listener.port, slot.listener.backlog
+        listener = self.Listener(name, (host, port), backlog=backlog)
+        self._pool.append((listener, slot))
+        del self.channels, self.descriptors
+        self._debug("Register listener for service '%s'.", listener.name)
+
+
+class ListenersComponent(StartStopComponent):
+
+    name = 'manager.listeners'
+
+    def create(self, parent):
+        listeners = parent.listeners = Listeners(parent.app)
+        for slot in parent.app.slots:
+            listeners.register(slot)
+
+
+class ListenersManager(LogsMixin):
+
+    def __init__(self, app, listeners):
+        self.app = app
+        self.listeners = listeners
+        super(ListenersManager, self).__init__()
 
     def start(self):
         """Start all registered listeners."""
-        for listener, slot in self.pool:
+        for listener, slot in self.listeners:
             listener.start()
             listener_started.send(self, listener=listener, slot=slot,
                                   app=self.app)
@@ -47,34 +82,18 @@ class Listeners(LogsMixin):
 
     def stop(self):
         """Stop all registered listeners."""
-        for listener, slot in self.pool:
+        for listener, slot in self.listeners:
             self._info("Stopping listening on '%s:%d', service '%s'.",
                        listener.host, listener.port, listener.name)
             listener_stopped.send(self, listener=listener, slot=slot,
                                   app=self.app)
             listener.stop()
 
-    def register(self, slot):
-        """Register new listener with given parameters."""
-        name, host, port, backlog = slot.name, slot.listener.host, \
-            slot.listener.port, slot.listener.backlog
-        listener = self.Listener(name, (host, port), backlog=backlog)
-        self.pool.append((listener, slot))
-        del self.channels, self.descriptors
-        self._debug("Register listener for service '%s'.", listener.name)
 
+class ListenersManagerComponent(StartStopComponent):
 
-class ListenersComponent(StartStopComponent):
-
-    name = 'manager.listeners'
-    requires = ('loop',)
+    name = 'manager.listeners_manager'
+    requires = ('loop', 'listeners', 'process_manager')
 
     def create(self, parent):
-        """Create new :class:`ListenerPool` instance. Create existed
-        listeners.
-
-        """
-        listeners = parent.listeners = Listeners(parent.app)
-        for slot in parent.app.slots:
-            listeners.register(slot)
-        return listeners
+        return ListenersManager(parent.app, parent.listeners)
