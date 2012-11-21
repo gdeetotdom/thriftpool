@@ -20,8 +20,7 @@ Code of project based on `Celery`_.
 
 .. |cistatus| image:: https://secure.travis-ci.org/blackwithwhite666/thriftpool.png?branch=master
 .. _`Thrift`: http://thrift.apache.org/
-.. _`pyuv`: http://code.google.com/p/pyev/
-.. _`libuv`: http://software.schmorp.de/pkg/libev.html
-.. _`ØMQ`: http://zeromq.github.com/pyzmq/
+.. _`pyuv`:https://github.com/saghul/pyuv
+.. _`libuv`: https://github.com/joyent/libuv
 .. _`Cython`: http://www.cython.org/
 .. _`Celery`: http://celeryproject.org/
