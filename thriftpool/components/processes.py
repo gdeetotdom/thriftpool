@@ -69,11 +69,9 @@ class ProcessManager(LogsMixin, LoopMixin):
             startup_line = self.script
         else:
             raise NotImplementedError()
-        enable_single_accept = self.app.config.WORKERS > 1
         args = ['-c', '{0}'.format(startup_line)]
         return dict(cmd=sys.executable, args=args,
                     redirect_output=['out', 'err'],
-                    env={'UV_TCP_SINGLE_ACCEPT': enable_single_accept and '1' or '0'},
                     custom_streams=['handshake', 'incoming', 'outgoing'],
                     custom_channels=self.listeners.channels,
                     redirect_input=True)
@@ -109,8 +107,12 @@ class ProcessManager(LogsMixin, LoopMixin):
         # And bootstrap remote process.
         producer.apply('change_title',
                        args=[create_name()])
+        use_mutex = self.app.config.WORKERS > 1
+        descriptors = {i: (listener.name,
+                           listener.accept_mutex if use_mutex else None)
+                       for i, listener in self.listeners.enumerated.items()}
         producer.apply('register_acceptors',
-                       args=[self.listeners.descriptors],
+                       args=[descriptors],
                        callback=bootstrap_done)
 
     def _do_handshake(self, process):

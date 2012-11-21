@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class Stream(object):
+    """Wrapper for plain file descriptor."""
 
     def __init__(self, loop, fd):
         self.loop = loop

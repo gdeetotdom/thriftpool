@@ -75,8 +75,27 @@ class Repository(set):
     Listener = Listener
     Service = ThriftService
 
+    def __init__(self, slots=None):
+        self._names = {}
+        super(Repository, self).__init__()
+        # Recreate repository from given slots.
+        for slot in (slots or []):
+            self.add(slot)
+
     def __reduce_args__(self):
         return (list(self),)
+
+    def add(self, slot):
+        """Add new slot to collection."""
+        if slot in self:
+            raise RegistrationError('Service {0!r} already present in'
+                                    ' repository'.format(slot.name))
+        self._names[slot.name] = slot
+        super(Repository, self).add(slot)
+
+    def __getitem__(self, name):
+        """Get slot by name."""
+        return self._names[name]
 
     def register(self, name, processor_cls, handler_cls, **opts):
         """Register new service in repository."""
@@ -90,7 +109,4 @@ class Repository(set):
                                handler_cls=handler_cls)
         # Create slot itself.
         slot = Slot(name, listener, service)
-        if slot in self:
-            raise RegistrationError('Service {0!r} already present in'
-                                    ' repository'.format(name))
         self.add(slot)

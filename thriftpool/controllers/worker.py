@@ -15,9 +15,7 @@ class WorkerNamespace(Namespace):
 
     def modules(self):
         return ['thriftpool.components.loop',
-                'thriftpool.components.services',
                 'thriftpool.components.worker',
-                'thriftpool.components.acceptors',
                 'thriftpool.components.broker']
 
 
@@ -41,6 +39,11 @@ class WorkerController(Controller):
     def register_acceptors(self, descriptors):
         """Register all existed acceptors with given descriptors."""
         acceptors = self.acceptors
-        for descriptor, (name, mutex) in descriptors.items():
-            descriptor += self.incoming_fd + 1
-            acceptors.add_acceptor(descriptor, name, mutex)
+        slots = self.app.slots
+        delta = self.incoming_fd + 1
+        for fd, (name, mutex) in descriptors.items():
+            slot = slots[name]
+            fd += delta
+            acceptors.register(fd, name,
+                               backlog=slot.listener.backlog,
+                               mutex=mutex)
