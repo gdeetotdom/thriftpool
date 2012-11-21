@@ -3,8 +3,6 @@ from __future__ import absolute_import
 
 import logging
 
-from pyuv import Pipe
-
 from thriftworker.utils.decorators import cached_property
 from thriftworker.utils.loop import in_loop
 from thriftworker.utils.mixin import LoopMixin
@@ -14,12 +12,15 @@ from thriftpool.utils.mixin import LogsMixin
 logger = logging.getLogger(__name__)
 
 
-class Acceptors(LogsMixin, LoopMixin):
+class AcceptorsManager(LogsMixin, LoopMixin):
 
     def __init__(self, app):
         self.app = app
         self.slots = {}
-        self.acceptors = {}
+
+    @cached_property
+    def acceptors(self):
+        return self.app.thriftworker.Acceptors()
 
     @cached_property
     def Acceptor(self):
@@ -29,23 +30,18 @@ class Acceptors(LogsMixin, LoopMixin):
     def register(self, slot):
         self.slots[slot.name] = slot
 
-    @in_loop
-    def add_acceptor(self, descriptor, name):
+    def add_acceptor(self, descriptor, name, mutex=None):
         assert name in self.slots, 'wrong name given'
-        pipe = Pipe(self.loop)
-        pipe.open(descriptor)
-        kwargs = dict(backlog=self.slots[name].listener.backlog)
-        acceptor = self.acceptors[name] = self.Acceptor(name, pipe, **kwargs)
-        acceptor.start()
+        kwargs = dict(backlog=self.slots[name].listener.backlog,
+                      mutex=mutex)
+        acceptor = self.Acceptor(name, descriptor, **kwargs)
+        self.acceptors.register(acceptor)
 
     def start(self):
-        pass
+        self.acceptors.start()
 
-    @in_loop
     def stop(self):
-        for acceptor in self.acceptors.values():
-            acceptor.stop()
-        self.acceptors = {}
+        self.acceptors.stop()
 
 
 class AcceptorsComponent(StartStopComponent):
@@ -54,7 +50,7 @@ class AcceptorsComponent(StartStopComponent):
     requires = ('loop',)
 
     def create(self, parent):
-        acceptors = parent.acceptors = Acceptors(parent.app)
+        acceptors = parent.acceptors = AcceptorsManager(parent.app)
         for slot in parent.app.slots:
             acceptors.register(slot)
         return acceptors

@@ -69,9 +69,11 @@ class ProcessManager(LogsMixin, LoopMixin):
             startup_line = self.script
         else:
             raise NotImplementedError()
+        enable_single_accept = self.app.config.WORKERS > 1
         args = ['-c', '{0}'.format(startup_line)]
         return dict(cmd=sys.executable, args=args,
                     redirect_output=['out', 'err'],
+                    env={'UV_TCP_SINGLE_ACCEPT': enable_single_accept and '1' or '0'},
                     custom_streams=['handshake', 'incoming', 'outgoing'],
                     custom_channels=self.listeners.channels,
                     redirect_input=True)

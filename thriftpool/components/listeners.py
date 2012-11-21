@@ -42,7 +42,9 @@ class Listeners(LogsMixin):
     @cached_property
     def descriptors(self):
         """Return dictionary of relative file descriptor of each listener."""
-        return {i: listener.name for i, (listener, _) in enumerate(self._pool)}
+        use_mutex = self.app.config.WORKERS > 1
+        return {i: (listener.name, self.app.env.Mutex() if use_mutex else None)
+                for i, (listener, _) in enumerate(self._pool)}
 
     def register(self, slot):
         """Register new listener with given parameters."""
