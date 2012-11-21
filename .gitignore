@@ -14,7 +14,6 @@ develop-eggs
 *.so
 MANIFEST
 docs/html/
-docs/source/api/
 
 # Installer logs
 pip-log.txt
