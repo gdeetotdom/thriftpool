@@ -12,8 +12,16 @@ handler_method_guarded = Signal(providing_args=['fn'])
 listener_started = Signal(providing_args=['listener', 'slot', 'app'])
 
 
+#: All listener was started.
+listeners_started = Signal(providing_args=['app'])
+
+
 #: Listener was stopped.
 listener_stopped = Signal(providing_args=['listener', 'slot', 'app'])
+
+
+#: All listeners stopped.
+listeners_stopped = Signal(providing_args=['app'])
 
 
 #: Called before loggers are configured.

@@ -72,7 +72,7 @@ class BaseWrappedHandler(object):
             getattr(self, item)
 
     def __getattr__(self, name):
-        """All unknown access got to handle."""
+        """All unknown access go to wrapped handler."""
         return getattr(self._handler, name)
 
 

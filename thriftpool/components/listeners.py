@@ -5,7 +5,8 @@ import logging
 
 from thriftpool.components.base import StartStopComponent
 from thriftpool.utils.mixin import LogsMixin
-from thriftpool.signals import listener_started, listener_stopped
+from thriftpool.signals import listener_started, listener_stopped, \
+                               listeners_stopped, listeners_started
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class ListenersManager(LogsMixin):
                                   app=self.app)
             self._info("Starting listener on '%s:%d' for service '%s'.",
                        listener.host, listener.port, listener.name)
+        listeners_started.send(self, app=self.app)
 
     def stop(self):
         """Stop all registered listeners."""
@@ -50,6 +52,7 @@ class ListenersManager(LogsMixin):
             listener_stopped.send(self, listener=listener, slot=slot,
                                   app=self.app)
             listener.stop()
+        listeners_stopped.send(self, app=self.app)
 
 
 class ListenersManagerComponent(StartStopComponent):
