@@ -32,6 +32,13 @@ class WorkerController(Controller):
         self.incoming_fd = self.outgoing_fd + 1
         super(WorkerController, self).__init__()
 
+    def on_before_init(self):
+        super(WorkerController, self).on_before_init()
+        app = self.app
+        if app.config.REDIRECT_STDOUT:
+            logger = getLogger('thriftpool.stdout')
+            app.log.redirect_stdouts_to_logger(logger)
+
     def change_title(self, name):
         """Change process title."""
         set_process_title(name)

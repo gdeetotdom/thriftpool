@@ -11,6 +11,7 @@ DEFAULT_SETTINGS = dict(
     DEFAULT_LOG_FMT="[%(asctime)s %(levelname)s] %(message)s",
     LOGGING_LEVEL=logging.DEBUG,
     LOG_REQUESTS=False,
+    REDIRECT_STDOUT=True,
     LOG_FILE=None,
     SLOTS=[],
     PROCESS_NAME='thriftpool',

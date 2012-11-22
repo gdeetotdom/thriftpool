@@ -10,6 +10,8 @@ from thriftpool import thriftpool
 from thriftpool.signals import handler_method_guarded
 from thriftpool.exceptions import WrappingError
 
+logger = logging.getLogger(__name__)
+
 
 class guarded_method(object):
     """Create guarded method for handler."""
@@ -40,7 +42,7 @@ class guarded_method(object):
                 except Exception as exc:
                     # Catch all exceptions here, process they here. Write application
                     # exception to thrift transport.
-                    logging.exception(exc)
+                    logger.exception(exc)
                     raise TApplicationException(TApplicationException.INTERNAL_ERROR,
                         "({0}) {1}".format(type(exc).__name__, str(exc)))
 
@@ -68,6 +70,10 @@ class BaseWrappedHandler(object):
         # Force methods creation.
         for item in self._wrapped_methods:
             getattr(self, item)
+
+    def __getattr__(self, name):
+        """All unknown access got to handle."""
+        return getattr(self._handler, name)
 
 
 class WrappedHandlerMeta(type):
