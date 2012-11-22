@@ -4,7 +4,7 @@ from __future__ import absolute_import
 from collections import namedtuple
 
 from thriftworker.utils.decorators import cached_property
-from thriftworker.utils.imports import symbol_by_name
+from thriftworker.utils.imports import symbol_by_name, qualname
 
 from thriftpool.request.handler import WrappedHandlerMeta
 from thriftpool.request.processor import ProcessorMixin
@@ -21,7 +21,10 @@ class ThriftService(namedtuple('ThriftService', 'service_name processor_cls hand
     """Describe service information."""
 
     def __reduce__(self):
-        return (self.__class__, tuple(self))
+        service_name, processor_cls, handler_cls = self
+        processor_cls = qualname(processor_cls)
+        handler_cls = qualname(handler_cls)
+        return (self.__class__, (service_name, processor_cls, handler_cls))
 
     @cached_property
     def Handler(self):
@@ -87,9 +90,6 @@ class Repository(set):
 
     def add(self, slot):
         """Add new slot to collection."""
-        if slot in self:
-            raise RegistrationError('Service {0!r} already present in'
-                                    ' repository'.format(slot.name))
         self._names[slot.name] = slot
         super(Repository, self).add(slot)
 

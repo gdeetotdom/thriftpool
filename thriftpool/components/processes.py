@@ -103,7 +103,7 @@ class ProcessManager(LogsMixin, LoopMixin):
                        .format(process.id, self.app.config))
         # Notify about process initialization.
         bootstrap_done = (lambda producer, reply:
-                          self._info('Process %d started!', process.id))
+                          self._info('Worker %d started!', process.id))
         # And bootstrap remote process.
         producer.apply('change_title',
                        args=[create_name()])
@@ -141,15 +141,18 @@ class ProcessManager(LogsMixin, LoopMixin):
     def _on_event(self, evtype, msg):
         if msg['name'] != self.process_name:
             return
+        if evtype == 'exit':
+            self._info('Worker %d exited with code %d!',
+                       msg['pid'], msg['exit_status'])
+        elif evtype == 'spawn':
+            self._debug('Worker %d spawned!', msg['pid'])
         if not self.controller.is_running:
             return
         if evtype == 'spawn':
-            self._debug('Process %d spawned!', msg['pid'])
             process = self.manager.get_process(msg['pid'])
             self._redirect_io(process)
             self._do_handshake(process)
         elif evtype == 'exit':
-            self._critical('Process %d exited!', msg['pid'])
             producer = self.producers.pop(msg['pid'], None)
             producer.stop()
 
