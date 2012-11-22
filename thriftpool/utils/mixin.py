@@ -5,10 +5,17 @@ import inspect
 from thriftworker.utils.decorators import cached_property
 from thriftworker.utils.imports import symbol_by_name
 
-from thriftpool.utils.other import rgetattr
 from thriftpool.app._state import current_app
 
-__all__ = ['SubclassMixin']
+
+def rgetattr(obj, path):
+    """Get nested attribute from object.
+
+    :param obj: object
+    :param path: path to attribute
+
+    """
+    return reduce(getattr, [obj] + path.split('.'))
 
 
 def _unpickle(name, args):

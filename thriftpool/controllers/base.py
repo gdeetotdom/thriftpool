@@ -14,10 +14,10 @@ import uuid
 from logging import getLogger
 
 from thriftworker.utils.imports import qualname
+from thriftworker.utils.finalize import Finalize
 
 from thriftpool.components.base import Namespace
 from thriftpool.exceptions import SystemTerminate
-from thriftpool.utils.finalize import Finalize
 from thriftpool.utils.mixin import LogsMixin
 from thriftpool.utils.signals import signals
 

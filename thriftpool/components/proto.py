@@ -90,7 +90,8 @@ class Receiver(Proto):
             self._buf = BytesIO()
             self._received = self._length = 0
             self._state = self.WAIT_LENGTH
-            self._on_read(evtype, dict(data=left))
+            if left:
+                self._on_read(evtype, dict(data=left))
 
     def _on_received(self, data):
         request_id, data = self._split_request_id(data)
@@ -167,6 +168,7 @@ class Transport(object):
 
 
 class Consumer(Transport):
+    """Pull commands from consumer, execute them and return result."""
 
     def __init__(self, loop, incoming, outgoing, handler):
         self.handler = handler
@@ -193,6 +195,7 @@ class Consumer(Transport):
 
 
 class Producer(Transport):
+    """Push commands to consumer."""
 
     def __init__(self, loop, incoming, outgoing, process=None):
         self.process = process

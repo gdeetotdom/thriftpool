@@ -2,10 +2,8 @@ from __future__ import absolute_import
 
 import atexit
 import warnings
-import socket
 import os
 
-from thriftpool.utils.other import setproctitle
 from thriftpool.utils.platforms import create_pidlock, daemonize
 from thriftpool.signals import collect_excluded_fds
 
@@ -26,17 +24,10 @@ class Daemon(object):
         self.args = list(args or [])
         atexit.register(self.on_exit)
 
-    def change_process_titile(self):
-        """Set process title."""
-        setproctitle('[{0}@{1}]{2}'.format(self.app.config.PROCESS_NAME,
-                                           socket.gethostname(),
-                                           ' '.join([''] + self.args)))
-
     def on_start(self):
         if getattr(os, 'getuid', None) and os.getuid() == 0:
             warnings.warn(RuntimeWarning(
                 'Running thriftpoold with superuser privileges is discouraged!'))
-        self.change_process_titile()
 
     def start(self):
         """Start new worker."""

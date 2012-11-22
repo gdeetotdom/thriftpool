@@ -1,8 +1,11 @@
 from __future__ import absolute_import
 
 import os
+import sys
+import socket
 
 from thriftpool.utils.logs import mlevel, LOG_LEVELS, LEVELS
+from thriftpool.utils.platforms import set_process_title
 from thriftpool.bin.base import BaseCommand, Option
 
 
@@ -31,6 +34,11 @@ class ManagerCommand(BaseCommand):
                action='store_true'),
     )
 
+    def change_process_title(self, app):
+        """Set process title."""
+        set_process_title('[{0}@{1}]{2}'.format(app.config.PROCESS_NAME,
+            socket.gethostname(), ' '.join([''] + sys.argv[1:])))
+
     def run(self, *args, **options):
         app = self.app
         try:
@@ -56,6 +64,7 @@ class ManagerCommand(BaseCommand):
         if options['worker_type']:
             app.config.WORKER_TYPE = options['worker_type']
 
+        self.change_process_title(app)
         controller = app.ManagerController()
         daemon = app.Daemon(controller=controller,
                             pidfile=pid_file,

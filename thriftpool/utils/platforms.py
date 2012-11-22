@@ -7,6 +7,13 @@ import sys
 import resource
 from contextlib import contextmanager
 
+try:
+    import setproctitle
+except ImportError:
+    setproctitle_exists = False
+else:
+    setproctitle_exists = True
+
 
 EX_OK = getattr(os, 'EX_OK', 0)
 EX_FAILURE = 1
@@ -15,6 +22,13 @@ EX_USAGE = getattr(os, 'EX_USAGE', 64)
 
 DAEMON_UMASK = 0
 DAEMON_WORKDIR = '/'
+
+
+def set_process_title(name):
+    """Change process title."""
+    if not setproctitle_exists:
+        return
+    setproctitle.setproctitle(name)
 
 
 def fileno(f):

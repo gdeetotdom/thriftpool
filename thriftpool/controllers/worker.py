@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from logging import getLogger
 
-from thriftpool.utils.other import setproctitle
+from thriftpool.utils.platforms import set_process_title
 from thriftpool.components.base import Namespace
 from thriftpool.controllers.base import Controller
 
@@ -34,7 +34,7 @@ class WorkerController(Controller):
 
     def change_title(self, name):
         """Change process title."""
-        setproctitle(name)
+        set_process_title(name)
 
     def register_acceptors(self, descriptors):
         """Register all existed acceptors with given descriptors."""
