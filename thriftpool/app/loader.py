@@ -52,7 +52,7 @@ class Loader(object):
         for module_name in self.list_modules():
             self.import_module(module_name)
 
-    def on_before_init(self):
+    def on_before_init(self, controller):
         """Called before controller initialization."""
         pass
 
