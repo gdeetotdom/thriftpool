@@ -112,7 +112,8 @@ class Controller(LogsMixin):
         if self._state in (self.CLOSED, self.TERMINATED):
             return
 
-        if self._state != self.RUNNING or self._running != len(self.components):
+        if self._state != self.RUNNING or \
+                self._running != len(self.components):
             # Not fully started, can safely exit.
             self._state = self.TERMINATED
             self._shutdown_complete.set()

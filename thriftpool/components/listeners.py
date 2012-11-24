@@ -5,8 +5,8 @@ import logging
 
 from thriftpool.components.base import StartStopComponent
 from thriftpool.utils.mixin import LogsMixin
-from thriftpool.signals import listener_started, listener_stopped, \
-                               listeners_stopped, listeners_started
+from thriftpool.signals import (listener_started, listener_stopped,
+                                listeners_stopped, listeners_started)
 
 logger = logging.getLogger(__name__)
 

@@ -19,12 +19,12 @@ else:
 
 
 NEW_REQUEST_MESSAGE = \
-"""{prefix} do {method_name} where
+    """{prefix} do {method_name} where
     arguments = {arguments}
     keywords  = {keywords}"""
 
 SERVED_REQUEST_MESSAGE = \
-"""{prefix} return {result} ({took})"""
+    """{prefix} return {result} ({took})"""
 
 
 def qualname(obj):

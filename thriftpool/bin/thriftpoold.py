@@ -36,16 +36,19 @@ class ManagerCommand(BaseCommand):
 
     def change_process_title(self, app):
         """Set process title."""
-        set_process_title('[{0}@{1}]{2}'.format(app.config.PROCESS_NAME,
-            socket.gethostname(), ' '.join([''] + sys.argv[1:])))
+        set_process_title('[{0}@{1}]{2}'
+                          .format(app.config.PROCESS_NAME,
+                                  socket.gethostname(),
+                                  ' '.join([''] + sys.argv[1:])))
 
     def run(self, *args, **options):
         app = self.app
         try:
             app.config.LOGGING_LEVEL = mlevel(options['log_level'])
         except KeyError:
-            self.die('Unknown level {0!r}. Please use one of {1}.'.format(
-                        options['log_level'], '|'.join(LOG_LEVELS.keys())))
+            self.die('Unknown level {0!r}. Please use one of {1}.'
+                     .format(options['log_level'],
+                             '|'.join(LOG_LEVELS.keys())))
 
         normalize_path = lambda path: \
             os.path.abspath(os.path.expanduser(path)) \

@@ -17,7 +17,8 @@ class Formatter(argparse.HelpFormatter):
 
     def _metavar_formatter(self, action, default_metavar):
         if action.choices is None:
-            return super(Formatter, self)._metavar_formatter(action, default_metavar)
+            return super(Formatter, self)._metavar_formatter(action,
+                                                             default_metavar)
 
         white = self.umbrella.colored.white
         parts = []
@@ -77,8 +78,10 @@ class SubCommandMeta(type):
     """Metaclass that register sub-commands."""
 
     def __new__(cls, name, bases, attributes):
-        is_abstract = attributes['abstract'] = attributes.get('abstract', False)
-        klass = super(SubCommandMeta, cls).__new__(cls, name, bases, attributes)
+        is_abstract = attributes['abstract'] = \
+            attributes.get('abstract', False)
+        klass = (super(SubCommandMeta, cls)
+                 .__new__(cls, name, bases, attributes))
         if not is_abstract:
             UmbrellaCommand.subcommand_classes[klass.__name__.lower()] = klass
         return klass

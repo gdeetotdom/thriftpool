@@ -9,7 +9,8 @@ from thriftpool import thriftpool
 from thriftpool.utils.local import LocalStack
 
 
-class Request(namedtuple('Request', 'handler method args kwargs service_name')):
+class Request(namedtuple('Request', ('handler', 'method', 'args',
+                                     'kwargs', 'service_name'))):
     """Describe thrift request."""
 
 

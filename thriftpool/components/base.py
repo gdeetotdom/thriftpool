@@ -68,9 +68,9 @@ class Namespace(LogsMixin):
         self.components = self._claim()
         self._debug("Building boot step graph.")
         self.boot_steps = [self.bind_component(name, parent, **kwargs)
-                                for name in self._finalize_boot_steps()]
+                           for name in self._finalize_boot_steps()]
         self._debug("New boot order: {%s}",
-                ', '.join(c.name for c in self.boot_steps))
+                    ', '.join(c.name for c in self.boot_steps))
 
         for component in self.boot_steps:
             component.include(parent)
@@ -94,7 +94,8 @@ class Namespace(LogsMixin):
                 return C
 
     def _finalize_boot_steps(self):
-        G = self.graph = DependencyGraph((C.name, C.requires)
+        G = self.graph = \
+            DependencyGraph((C.name, C.requires)
                             for C in self.components.itervalues())
         last = self._find_last()
         if last:

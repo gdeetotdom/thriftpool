@@ -91,7 +91,8 @@ class ProcessManager(LogsMixin, LoopMixin):
     def _create_producer(self, process):
         incoming = process.streams['incoming']
         outgoing = process.streams['outgoing']
-        producer = self.producers[process.id] = Producer(self.loop, incoming, outgoing, process)
+        producer = self.producers[process.id] = \
+            Producer(self.loop, incoming, outgoing, process)
         producer.start()
         return producer
 

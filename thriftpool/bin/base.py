@@ -4,7 +4,6 @@ import sys
 import os
 import argparse
 import traceback
-import warnings
 
 import thriftpool
 from thriftpool.utils.platforms import EX_FAILURE, EX_OK
@@ -34,6 +33,7 @@ class Error(Exception):
 
 
 class BaseCommand(object):
+    """Abstract command. Other commands should be subclass of this."""
 
     #: Specify parser class.
     Parser = argparse.ArgumentParser
@@ -79,7 +79,8 @@ class BaseCommand(object):
             self.error(self.colored.red('Error: {0!r}'.format(exc)))
             return exc.status
         except Exception as exc:
-            self.error(self.colored.red('Unhandled exception: {0!r}'.format(exc)))
+            self.error(self.colored.red('Unhandled exception: {0!r}'
+                                        .format(exc)))
             traceback.print_tb(sys.exc_info()[2], file=self.stderr)
             return EX_FAILURE
 

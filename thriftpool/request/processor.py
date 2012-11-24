@@ -14,13 +14,11 @@ class ProcessorMixin(object):
             try:
                 fn = self._processMap[name]
             except KeyError:
-                raise TApplicationException(TApplicationException.UNKNOWN_METHOD,
-                                            'Unknown function %s' % (name))
-            try:
+                msg = 'Unknown function %s' % (name)
+                code = TApplicationException.UNKNOWN_METHOD
+                raise TApplicationException(code, msg)
+            else:
                 fn(self, seqid, iprot, oprot)
-            except AttributeError:
-                raise TApplicationException(TApplicationException.UNKNOWN_METHOD,
-                                            'Unknown function %s' % (name))
 
         except TApplicationException as exc:
             oprot.writeMessageBegin(name, TMessageType.EXCEPTION, seqid)

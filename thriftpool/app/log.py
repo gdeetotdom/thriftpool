@@ -55,15 +55,17 @@ class Logging(object):
         """Can be output colored?"""
         return isatty(sys.stderr) if logfile is None else False
 
-    def setup_handlers(self, logger, logfile, format, formatter=ColorFormatter):
-        """Register needed handlers for given logger. If ``logfile`` equal to 
+    def setup_handlers(self, logger, logfile, format,
+                       formatter=ColorFormatter):
+        """Register needed handlers for given logger. If ``logfile`` equal to
         :const:`None` use :attr:`sys.stderr` as ``logfile``.
 
         """
         colorize = self.colorize(logfile)
         datefmt = '%H:%M:%S' if logfile is None else '%Y-%m-%d %H:%M:%S'
         handler = self.get_handler(logfile)
-        handler.setFormatter(formatter(format, use_color=colorize, datefmt=datefmt))
+        handler.setFormatter(formatter(format, use_color=colorize,
+                                       datefmt=datefmt))
         logger.addHandler(handler)
         return logger
 
@@ -82,7 +84,7 @@ class Logging(object):
         if not receivers:
             self.setup_handlers(root, self.logfile, self.format)
             after_logging_setup.send(sender=self, root=root,
-                                    logfile=self.logfile,
-                                    loglevel=self.loglevel)
+                                     logfile=self.logfile,
+                                     loglevel=self.loglevel)
         if self.app.config.LOG_REQUESTS:
             self.setup_request_logging()

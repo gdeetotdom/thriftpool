@@ -20,7 +20,7 @@ def smart_str(s, encoding='utf-8', strings_only=False, errors='strict'):
                 # know how to print itself properly. We shouldn't raise a
                 # further exception.
                 return ' '.join([smart_str(arg, encoding, strings_only,
-                        errors) for arg in s])
+                                           errors) for arg in s])
             return unicode(s).encode(encoding, errors)
     elif isinstance(s, unicode):
         return s.encode(encoding, errors)
@@ -58,7 +58,7 @@ def smart_unicode(s, encoding='utf-8', strings_only=False, errors='strict'):
                 # approximation to what the Exception's standard str()
                 # output should be.
                 s = ' '.join([smart_unicode(arg, encoding, strings_only,
-                        errors) for arg in s])
+                                            errors) for arg in s])
     elif not isinstance(s, unicode):
         # Note: We use .decode() here, instead of unicode(s, encoding,
         # errors), so that if s is a SafeString, it ends up being a

@@ -8,7 +8,6 @@ from thriftworker.utils.imports import symbol_by_name, qualname
 
 from thriftpool.request.handler import WrappedHandlerMeta
 from thriftpool.request.processor import ProcessorMixin
-from thriftpool.exceptions import RegistrationError
 
 __all__ = ['Repository']
 
@@ -17,7 +16,9 @@ class Listener(namedtuple('Listener', 'host port backlog')):
     """Specify which port we should listen."""
 
 
-class ThriftService(namedtuple('ThriftService', 'service_name processor_cls handler_cls')):
+class ThriftService(namedtuple('ThriftService', ('service_name',
+                                                 'processor_cls',
+                                                 'handler_cls'))):
     """Describe service information."""
 
     def __reduce__(self):

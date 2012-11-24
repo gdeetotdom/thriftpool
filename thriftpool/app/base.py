@@ -6,7 +6,7 @@ import inspect
 from pyuv import Loop
 
 from thriftworker.utils.decorators import cached_property
-from thriftworker.utils.imports import symbol_by_name
+from thriftworker.utils.imports import symbol_by_name, instantiate
 from thriftworker.app import ThriftWorker
 
 from thriftpool.app.config import Configuration
@@ -32,6 +32,24 @@ class ThriftPool(SubclassMixin):
     #: Default loader for this application. Must provide configuration
     #: for it.
     loader_cls = 'thriftpool.app.loader:Loader'
+
+    #: What class should be used for logging setup.
+    logging_cls = 'thriftpool.app.log:Logging'
+
+    #: Repository for registered slots.
+    repo_cls = 'thriftpool.app.slots:Repository'
+
+    #: Manager controller class.
+    manager_cls = 'thriftpool.controllers.manager:ManagerController'
+
+    #: Worker controller class.
+    worker_cls = 'thriftpool.controllers.worker:WorkerController'
+
+    #: Specify daemonizing behavior.
+    daemon_cls = 'thriftpool.app.daemon:Daemon'
+
+    #: Store active requests here.
+    request_stack_cls = 'thriftpool.request.stack:RequestStack'
 
     def __init__(self):
         self._finalized = False
@@ -72,7 +90,7 @@ class ThriftPool(SubclassMixin):
         logging.
 
         """
-        return self.subclass_with_self('thriftpool.app.log:Logging')
+        return self.subclass_with_self(self.logging_cls)
 
     @cached_property
     def log(self):
@@ -82,7 +100,7 @@ class ThriftPool(SubclassMixin):
     @cached_property
     def Repository(self):
         """Create bounded slots repository from :class:`.slots:Repository`."""
-        return self.subclass_with_self('thriftpool.app.slots:Repository')
+        return self.subclass_with_self(self.repo_cls)
 
     @cached_property
     def slots(self):
@@ -126,15 +144,15 @@ class ThriftPool(SubclassMixin):
 
     @cached_property
     def ManagerController(self):
-        return self.subclass_with_self('thriftpool.controllers.manager:ManagerController')
+        return self.subclass_with_self(self.manager_cls)
 
     @cached_property
     def WorkerController(self):
-        return self.subclass_with_self('thriftpool.controllers.worker:WorkerController')
+        return self.subclass_with_self(self.worker_cls)
 
     @cached_property
     def Daemon(self):
-        return self.subclass_with_self('thriftpool.app.daemon:Daemon')
+        return self.subclass_with_self(self.daemon_cls)
 
     def register(self, *args, **options):
         """Register new handler."""
@@ -168,5 +186,4 @@ class ThriftPool(SubclassMixin):
     @cached_property
     def request_stack(self):
         """Store current requests."""
-        RequestStack = symbol_by_name('thriftpool.request.stack:RequestStack')
-        return RequestStack()
+        return instantiate(self.request_stack_cls)

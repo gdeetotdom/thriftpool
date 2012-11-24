@@ -35,16 +35,18 @@ class guarded_method(object):
 
         @wraps(method)
         def inner_method(*args, **kwargs):
+            """Method that handle unknown exception correctly."""
             stack.add(handler, method, args, kwargs, service_name)
             with stack:
                 try:
                     return method(*args, **kwargs)
                 except Exception as exc:
-                    # Catch all exceptions here, process they here. Write application
-                    # exception to thrift transport.
+                    # Catch all exceptions here, process they here. Write
+                    # application exception to thrift transport.
                     logger.exception(exc)
-                    raise TApplicationException(TApplicationException.INTERNAL_ERROR,
-                        "({0}) {1}".format(type(exc).__name__, str(exc)))
+                    code = TApplicationException.INTERNAL_ERROR
+                    msg = "({0}) {1}".format(type(exc).__name__, str(exc))
+                    raise TApplicationException(code, msg)
 
         return inner_method
 
@@ -72,7 +74,7 @@ class BaseWrappedHandler(object):
             getattr(self, item)
 
     def __getattr__(self, name):
-        """All unknown access go to wrapped handler."""
+        """All unknown attribute access go to wrapped handler."""
         return getattr(self._handler, name)
 
 

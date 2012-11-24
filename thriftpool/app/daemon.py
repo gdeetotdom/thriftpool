@@ -27,7 +27,8 @@ class Daemon(object):
     def on_start(self):
         if getattr(os, 'getuid', None) and os.getuid() == 0:
             warnings.warn(RuntimeWarning(
-                'Running thriftpoold with superuser privileges is discouraged!'))
+                'Running thriftpoold with superuser'
+                ' privileges is discouraged!'))
 
     def start(self):
         """Start new worker."""
