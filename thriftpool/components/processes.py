@@ -53,13 +53,16 @@ class ProcessManager(LogsMixin, LoopMixin):
     gevent_monkey = 'from gevent.monkey import patch_all; patch_all();'
     script = 'from thriftpool.bin.thriftworker import main; main();'
 
-    def __init__(self, app, manager, listeners, controller):
+    def __init__(self, app, listeners, controller):
         self.app = app
-        self.manager = manager
         self.listeners = listeners
         self.producers = {}
         self.controller = controller
         super(ProcessManager, self).__init__()
+
+    @property
+    def manager(self):
+        return self.app.gaffer_manager
 
     def _create_arguments(self):
         worker_type = self.app.config.WORKER_TYPE
@@ -198,5 +201,4 @@ class ProcessManagerComponent(StartStopComponent):
     requires = ('loop', 'listeners')
 
     def create(self, parent):
-        return ProcessManager(parent.app, parent.manager,
-                              parent.listeners, parent)
+        return ProcessManager(parent.app, parent.listeners, parent)

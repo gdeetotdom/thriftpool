@@ -15,6 +15,7 @@ from logging import getLogger
 
 from thriftworker.utils.imports import qualname
 from thriftworker.utils.finalize import Finalize
+from thriftworker.utils.decorators import cached_property
 
 from thriftpool.components.base import Namespace
 from thriftpool.exceptions import SystemTerminate
@@ -43,12 +44,15 @@ class Controller(LogsMixin):
     def __init__(self):
         self._running = 0
         self._state = None
-        self._shutdown_complete = self.app.env.Event()
         self._finalize = Finalize(self, self.stop, exitpriority=1)
         self.ident = uuid.uuid4()
         self.on_before_init()
         self.components = []
         self.namespace = self.Namespace(app=self.app).apply(self)
+
+    @cached_property
+    def _shutdown_complete(self):
+        return self.app.env.Event()
 
     def register_signal_handler(self):
         self._debug('Register signal handlers')

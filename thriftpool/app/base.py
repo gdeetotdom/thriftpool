@@ -2,11 +2,12 @@
 from __future__ import absolute_import
 
 import inspect
+from threading import RLock
 
-from pyuv import Loop
+from gaffer.manager import Manager
 
 from thriftworker.utils.decorators import cached_property
-from thriftworker.utils.imports import symbol_by_name, instantiate
+from thriftworker.utils.imports import instantiate
 from thriftworker.app import ThriftWorker
 
 from thriftpool.app.config import Configuration
@@ -53,14 +54,11 @@ class ThriftPool(SubclassMixin):
 
     def __init__(self):
         self._finalized = False
+        self._finalize_mutex = RLock()
         super(ThriftPool, self).__init__()
 
         # set current application as default
         set_current_app(self)
-
-    @cached_property
-    def _finalize_mutex(self):
-        return self.env.RLock()
 
     def __reduce__(self):
         # Reduce only pickles the configuration changes,
@@ -121,22 +119,25 @@ class ThriftPool(SubclassMixin):
                 self.slots.register(**params)
             self._finalized = True
 
-    @cached_property
+    @property
     def loop(self):
-        return Loop.default_loop()
+        return self.thriftworker.loop
 
     @cached_property
     def protocol_factory(self):
         """Create handler instance."""
-        ProtocolFactory = symbol_by_name(self.config.PROTOCOL_FACTORY_CLS)
-        return ProtocolFactory()
+        return instantiate(self.config.PROTOCOL_FACTORY_CLS)
 
     @cached_property
     def thriftworker(self):
-        return ThriftWorker(loop=self.loop,
-                            port_range=self.config.SERVICE_PORT_RANGE,
+        return ThriftWorker(port_range=self.config.SERVICE_PORT_RANGE,
                             protocol_factory=self.protocol_factory,
                             pool_size=self.config.CONCURRENCY)
+
+    @cached_property
+    def gaffer_manager(self):
+        """Create process manager."""
+        return Manager(loop=self.loop)
 
     @property
     def env(self):

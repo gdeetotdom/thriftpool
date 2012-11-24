@@ -8,8 +8,8 @@ ThriftPool
 
 `ThriftPool` is an application server for `Thrift`_ services. It should create needed
 sockets, start workers, serve requests from client and log them. It use `pyuv`_ as
-wrapper for `libuv`_ and `ØMQ`_ for load balancing between workers. Request processing
-written in `Cython`_.
+wrapper for `libuv`_ and pre-fork model for load balancing between workers.
+Request processing partially written in `Cython`_.
 
 .. note:: Currently it support only Thrift Framed protocol.
 

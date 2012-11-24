@@ -25,14 +25,6 @@ utils Package
     :undoc-members:
     :show-inheritance:
 
-:mod:`finalize` Module
-----------------------
-
-.. automodule:: thriftpool.utils.finalize
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 :mod:`local` Module
 -------------------
 
@@ -53,14 +45,6 @@ utils Package
 -------------------
 
 .. automodule:: thriftpool.utils.mixin
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-:mod:`other` Module
--------------------
-
-.. automodule:: thriftpool.utils.other
     :members:
     :undoc-members:
     :show-inheritance:

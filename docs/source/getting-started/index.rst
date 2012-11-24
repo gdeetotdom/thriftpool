@@ -1,10 +1,10 @@
-=================
- Getting Started
-=================
+===============
+Getting Started
+===============
 
 
 .. toctree::
     :maxdepth: 2
 
-    introduction
-    first-steps
+    installation
+    first_steps

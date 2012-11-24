@@ -2,9 +2,6 @@ from __future__ import absolute_import
 
 from logging import getLogger
 
-from gaffer.manager import Manager
-
-from thriftworker.utils.decorators import cached_property
 from thriftpool.components.base import Namespace
 from thriftpool.controllers.base import Controller
 
@@ -26,7 +23,3 @@ class ManagerController(Controller):
     Namespace = ManagerNamespace
 
     listeners = None
-
-    @cached_property
-    def manager(self):
-        return Manager(loop=self.app.loop)
