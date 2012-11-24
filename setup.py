@@ -47,6 +47,12 @@ try:
 finally:
     meta_fh.close()
 
+with open(os.path.join(here, 'README.rst')) as f:
+    README = f.read()
+
+with open(os.path.join(here, 'CHANGES.rst')) as f:
+    CHANGES = f.read()
+
 
 # Describe existed entry points
 
@@ -64,6 +70,8 @@ setup(name='thriftpool',
       author=meta['author'],
       author_email=meta['contact'],
       url=meta['homepage'],
+      long_description=README + '\n\n' + CHANGES,
+      keywords='thrift soa',
       license='BSD',
       packages=find_packages(),
       install_requires=['thrift', 'gaffer', 'six',

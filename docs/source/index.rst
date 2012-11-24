@@ -41,7 +41,8 @@ Reference Docs
 .. toctree::
    :maxdepth: 1
 
-   api
+   API <api>
+   Changelog <changelog>
 
 
 Indices and tables
