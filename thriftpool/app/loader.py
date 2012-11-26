@@ -9,6 +9,8 @@ try:
 except ImportError:
     iter_entry_points = lambda *args, **kwargs: []
 
+from thriftworker.utils.imports import import_from_cwd
+
 from thriftpool import signals
 
 __all__ = ['Loader']
@@ -46,7 +48,7 @@ class Loader(object):
             yield module_name
 
     def import_module(self, module):
-        return importlib.import_module(module)
+        return import_from_cwd(module)
 
     def preload_modules(self):
         for module_name in self.list_modules():
