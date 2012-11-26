@@ -30,6 +30,8 @@ class ManagerCommand(BaseCommand):
                action='store'),
         Option('-d', '--daemonize', help='Daemonize after start',
                action='store_true'),
+        Option('-m', '--modules', help='Modules to load',
+               action='store', type=str, nargs='*'),
         Option('--foreground', help='Don not detach from console',
                action='store_true'),
     )
@@ -66,6 +68,10 @@ class ManagerCommand(BaseCommand):
             app.config.CONCURRENCY = options['concurrency']
         if options['worker_type']:
             app.config.WORKER_TYPE = options['worker_type']
+        if options['modules']:
+            modules = list(app.config.MODULES)
+            modules.extend(options['modules'])
+            app.config.MODULES = modules
 
         self.change_process_title(app)
         controller = app.ManagerController()
