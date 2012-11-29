@@ -109,11 +109,8 @@ class ProcessManager(LogsMixin, LoopMixin):
         bootstrap_done = (lambda producer, reply:
                           self._info('Worker %d initialized.', process.id))
         # And bootstrap remote process.
-        producer.apply('change_title',
-                       args=[create_name()])
-        use_mutex = self.app.config.WORKERS > 1
-        descriptors = {i: (listener.name,
-                           listener.accept_mutex if use_mutex else None)
+        producer.apply('change_title', args=[create_name()])
+        descriptors = {i: listener.name
                        for i, listener in self.listeners.enumerated.items()}
         producer.apply('register_acceptors',
                        args=[descriptors],
