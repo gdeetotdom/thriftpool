@@ -48,9 +48,7 @@ class WorkerController(Controller):
         acceptors = self.acceptors
         slots = self.app.slots
         delta = self.incoming_fd + 1
-        for fd, (name, mutex) in descriptors.items():
+        for fd, name in descriptors.items():
             slot = slots[name]
             fd += delta
-            acceptors.register(fd, name,
-                               backlog=slot.listener.backlog,
-                               mutex=mutex)
+            acceptors.register(fd, name, backlog=slot.listener.backlog)
