@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import six
+
 __all__ = ['smart_str', 'smart_unicode']
 
 
@@ -9,9 +11,9 @@ def smart_str(s, encoding='utf-8', strings_only=False, errors='strict'):
     If strings_only is True, don't convert (some) non-string-like objects.
 
     """
-    if strings_only and (s is None or isinstance(s, int)):
+    if strings_only and (s is None or isinstance(s, six.integer_types)):
         return s
-    elif not isinstance(s, basestring):
+    elif not isinstance(s, six.string_types):
         try:
             return str(s)
         except UnicodeEncodeError:
@@ -42,7 +44,7 @@ def smart_unicode(s, encoding='utf-8', strings_only=False, errors='strict'):
     # setting.
     if isinstance(s, unicode):
         return s
-    if not isinstance(s, basestring,):
+    if not isinstance(s, six.string_types):
         if hasattr(s, '__unicode__'):
             s = unicode(s)
         else:

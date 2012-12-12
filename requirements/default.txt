@@ -1,4 +1,5 @@
 pyuv
 thrift
 setproctitle
-gaffer
+psutil
+six
