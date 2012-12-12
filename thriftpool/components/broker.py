@@ -5,11 +5,11 @@ import logging
 
 from pyuv import Pipe
 
-from gaffer.events import EventEmitter
-
 from thriftworker.utils.decorators import cached_property
 from thriftworker.utils.loop import in_loop
 from thriftworker.utils.mixin import LoopMixin
+
+from thriftpool.processes.events import EventEmitter
 from thriftpool.components.base import StartStopComponent
 from thriftpool.components.proto import Consumer
 from thriftpool.utils.mixin import LogsMixin

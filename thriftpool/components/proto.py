@@ -7,9 +7,9 @@ import cPickle as pickle
 from io import BytesIO
 from functools import partial
 
-from gaffer.events import EventEmitter
-
 from thriftworker.utils.decorators import cached_property
+
+from thriftpool.processes.events import EventEmitter
 
 logger = logging.getLogger(__name__)
 
