@@ -8,6 +8,10 @@
     :copyright: (c) 2011 by the Werkzeug Team, see AUTHORS for more details.
     :license: BSD, see LICENSE for more details.
 """
+from __future__ import absolute_import
+
+from six import iteritems
+
 
 # since each thread has its own greenlet we can just use those as identifiers
 # for the context.  If greenlets are not available we fall back to the
@@ -51,7 +55,7 @@ class Local(object):
         object.__setattr__(self, '__ident_func__', get_ident)
 
     def __iter__(self):
-        return iter(self.__storage__.items())
+        return iter(iteritems(self.__storage__))
 
     def __call__(self, proxy):
         """Create a proxy for a name."""

@@ -7,6 +7,7 @@ import struct
 import cPickle as pickle
 
 from pyuv import Pipe
+from six import iteritems
 
 from thriftworker.utils.loop import in_loop
 from thriftworker.utils.decorators import cached_property
@@ -111,7 +112,7 @@ class ProcessManager(LogsMixin, LoopMixin):
         # And bootstrap remote process.
         producer.apply('change_title', args=[create_name()])
         descriptors = {i: listener.name
-                       for i, listener in self.listeners.enumerated.items()}
+                       for i, listener in iteritems(self.listeners.enumerated)}
         producer.apply('register_acceptors',
                        args=[descriptors],
                        callback=bootstrap_done)

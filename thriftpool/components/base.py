@@ -13,7 +13,10 @@ from collections import defaultdict
 from importlib import import_module
 from logging import getLogger
 
+from six import with_metaclass
+
 from thriftworker.utils.imports import instantiate
+
 from thriftpool.utils.mixin import LogsMixin
 from thriftpool.utils.structures import DependencyGraph
 
@@ -112,6 +115,8 @@ class ComponentType(type):
     """Metaclass for components."""
 
     def __new__(cls, name, bases, attrs):
+        if name == 'NewBase':
+            return super(ComponentType, cls).__new__(cls, name, bases, attrs)
         abstract = attrs.pop("abstract", False)
         if not abstract:
             try:
@@ -127,7 +132,7 @@ class ComponentType(type):
         return cls
 
 
-class Component(object):
+class Component(with_metaclass(ComponentType)):
     """A component.
 
     The :meth:`__init__` method is called when the component
@@ -136,7 +141,6 @@ class Component(object):
     parent instantiation-time.
 
     """
-    __metaclass__ = ComponentType
 
     #: The name of the component, or the namespace
     #: and the name of the component separated by dot.

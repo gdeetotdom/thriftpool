@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 from logging import getLogger
 
+from six import iteritems
+
 from thriftpool.utils.platforms import set_process_title
 from thriftpool.components.base import Namespace
 from thriftpool.controllers.base import Controller
@@ -48,7 +50,7 @@ class WorkerController(Controller):
         acceptors = self.acceptors
         slots = self.app.slots
         delta = self.incoming_fd + 1
-        for fd, name in descriptors.items():
+        for fd, name in iteritems(descriptors):
             slot = slots[name]
             fd += delta
             acceptors.register(fd, name, backlog=slot.listener.backlog)

@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import argparse
 
+from six import with_metaclass, iteritems
+
 from thriftworker.utils.decorators import cached_property
 
 from thriftpool.bin.base import BaseCommand
@@ -22,7 +24,7 @@ class Formatter(argparse.HelpFormatter):
 
         white = self.umbrella.colored.white
         parts = []
-        for name, parser in action.choices.items():
+        for name, parser in iteritems(action.choices):
             parts.append(indent('+ {0}: {1}'.format(white(name),
                                                     parser.description), 2))
         result = '\n' + '\n'.join(parts)
@@ -52,7 +54,7 @@ class UmbrellaCommand(BaseCommand, SubclassMixin):
     def subcommands(self):
         """Initialize all subcommands."""
         return {name: cls(app=self.app) for name, cls
-                in self.subcommand_classes.items()}
+                in iteritems(self.subcommand_classes)}
 
     def parser_options(self):
         return dict(formatter_class=self.Formatter)
@@ -61,7 +63,7 @@ class UmbrellaCommand(BaseCommand, SubclassMixin):
         """Prepare parser for work."""
         parser = super(UmbrellaCommand, self).prepare_parser(parser)
         subparsers = parser.add_subparsers(dest='subparser_name')
-        for name, command in self.subcommands.items():
+        for name, command in iteritems(self.subcommands):
             subparser = subparsers.add_parser(name,
                                               description=command.description,
                                               usage=command.usage)
@@ -87,10 +89,8 @@ class SubCommandMeta(type):
         return klass
 
 
-class abstract(BaseCommand):
+class abstract(with_metaclass(SubCommandMeta, BaseCommand)):
     """Base class for sub-commands."""
-
-    __metaclass__ = SubCommandMeta
 
     #: Register this command in umbrella?
     abstract = True
