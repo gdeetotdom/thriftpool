@@ -5,6 +5,7 @@ import logging
 from functools import wraps
 
 from thrift.Thrift import TApplicationException, TException
+from thrift.protocol.TBase import TExceptionBase
 
 from thriftpool import thriftpool
 from thriftpool.signals import handler_method_guarded
@@ -26,7 +27,7 @@ class guarded_method(object):
         service_name = obj._service_name
         method = getattr(handler, self.__name__)
         stack = thriftpool.request_stack
-        allowed_exceptions = (TException,)
+        allowed_exceptions = (TException, TExceptionBase)
 
         # Apply all returned by signal decorators.
         for sender, decorator in handler_method_guarded.send(sender=handler,
