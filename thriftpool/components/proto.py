@@ -1,16 +1,16 @@
 from __future__ import absolute_import
 
 import logging
+import cPickle as pickle
 from uuid import UUID, uuid4
 from struct import Struct
-import cPickle as pickle
 from io import BytesIO
 from functools import partial
 
+from gaffer.events import EventEmitter
+
 from thriftworker.utils.decorators import cached_property
 from thriftworker.utils.loop import in_loop
-
-from thriftpool.processes.events import EventEmitter
 
 logger = logging.getLogger(__name__)
 

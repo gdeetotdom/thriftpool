@@ -4,11 +4,12 @@ from __future__ import absolute_import
 import inspect
 from threading import RLock
 
+from gaffer.manager import Manager
+
 from thriftworker.utils.decorators import cached_property
 from thriftworker.utils.imports import instantiate
 from thriftworker.app import ThriftWorker
 
-from thriftpool.processes.manager import Manager
 from thriftpool.app.config import Configuration
 from thriftpool.exceptions import RegistrationError
 from thriftpool.utils.mixin import SubclassMixin
