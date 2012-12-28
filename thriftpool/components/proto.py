@@ -8,6 +8,7 @@ from io import BytesIO
 from functools import partial
 
 from thriftworker.utils.decorators import cached_property
+from thriftworker.utils.loop import in_loop
 
 from thriftpool.processes.events import EventEmitter
 
@@ -194,14 +195,47 @@ class Consumer(Transport):
         super(Consumer, self).stop()
 
 
+class AsyncResult(object):
+    """Provide asynchronous result."""
+
+    def __init__(self):
+        self.links = set()
+
+    def callback(self, *args, **kwargs):
+        """Notify us about result."""
+        for link in self.links:
+            link(*args, **kwargs)
+
+    def link(self, link):
+        """Add new function to links."""
+        self.links.add(link)
+        return self
+
+
 class Producer(Transport):
     """Push commands to consumer."""
+
+    AsyncResult = AsyncResult
 
     def __init__(self, loop, incoming, outgoing, process=None):
         self.process = process
         super(Producer, self).__init__(loop, incoming, outgoing)
 
+    @in_loop
     def apply(self, method_name, callback=None, args=None, kwargs=None):
+        """Enqueue new remote procedure call."""
         assert self.process.active, "can't sent message to inactive process"
         callback = callback and partial(callback, self) or None
-        self.write((method_name, args or [], kwargs or {}), callback)
+        self.write((str(method_name), args or [], kwargs or {}), callback)
+
+    def __getattr__(self, name):
+        """Create inner function that should enqueue remote procedure call."""
+
+        def inner_function(*args, **kwargs):
+            result = self.AsyncResult()
+            self.apply(name, callback=result.callback,
+                       args=args, kwargs=kwargs)
+            return result
+
+        inner_function.__name__ = name
+        return inner_function

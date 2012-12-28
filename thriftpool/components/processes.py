@@ -44,6 +44,20 @@ class RedirectStream(object):
             self.channel.stop()
 
 
+class Producers(dict):
+
+    def __getattr__(self, name):
+
+        def inner_function(*args, **kwargs):
+            results = []
+            for producer in self.values():
+                results.append(getattr(producer, name)(*args, **kwargs))
+            return results
+
+        inner_function.__name__ = name
+        return inner_function
+
+
 class ProcessManager(LogsMixin, LoopMixin):
     """Start and manage workers."""
 
@@ -57,8 +71,9 @@ class ProcessManager(LogsMixin, LoopMixin):
     def __init__(self, app, listeners, controller):
         self.app = app
         self.listeners = listeners
-        self.producers = {}
+        self.producers = Producers()
         self.controller = controller
+        self.bootstrapped = {}
         super(ProcessManager, self).__init__()
 
     @property
@@ -79,6 +94,10 @@ class ProcessManager(LogsMixin, LoopMixin):
                     custom_streams=['handshake', 'incoming', 'outgoing'],
                     custom_channels=self.listeners.channels,
                     redirect_input=True)
+
+    @cached_property
+    def _is_started(self):
+        return self.app.env.RealEvent()
 
     @cached_property
     def _is_stopped(self):
@@ -103,19 +122,24 @@ class ProcessManager(LogsMixin, LoopMixin):
     def _bootstrap_process(self, process):
         # Now we can create producer.
         producer = self._create_producer(process)
+
         # Create name for process.
-        create_name = (lambda: self.name_template
-                       .format(process.id, self.app.config))
+        name = self.name_template.format(process.id, self.app.config)
+
         # Notify about process initialization.
-        bootstrap_done = (lambda producer, reply:
-                          self._info('Worker %d initialized.', process.id))
+        def bootstrap_done(producer, reply):
+            self.bootstrapped[process.id] = producer
+            self._info('Worker %d initialized.', process.id)
+            state = self.manager.get_process(self.process_name)
+            if len(self.bootstrapped) >= state.numprocesses:
+                self._info('Workers initialization done.')
+                self._is_started.set()
+
         # And bootstrap remote process.
-        producer.apply('change_title', args=[create_name()])
+        producer.apply('change_title', args=[name])
         descriptors = {i: listener.name
                        for i, listener in iteritems(self.listeners.enumerated)}
-        producer.apply('register_acceptors',
-                       args=[descriptors],
-                       callback=bootstrap_done)
+        producer.register_acceptors(descriptors).link(bootstrap_done)
 
     def _do_handshake(self, process):
         # Pass application to created process.
@@ -141,34 +165,53 @@ class ProcessManager(LogsMixin, LoopMixin):
         process.monitor_io('.', monitor_io)
 
     def _on_event(self, evtype, msg):
+        """Handle process events."""
         if msg['name'] != self.process_name:
+            # Not our process.
             return
+
         if evtype == 'exit':
+            # Log exit event.
             log = msg['term_signal'] and self._critical or self._info
             log('Worker %d exited with term signal %d and exit status %d.',
                 msg['pid'], msg['term_signal'], msg['exit_status'])
+
         elif evtype == 'spawn':
+            # Log spawn event.
             self._info('Worker %d spawned with pid %d.',
                        msg['pid'], msg['os_pid'])
+
         if not self.controller.is_running:
+            # Controller not running, simply exit.
             return
+
         if evtype == 'spawn':
+            # New process spawned, handle event.
             process = self.manager.get_process(msg['pid'])
             self._redirect_io(process)
             self._do_handshake(process)
+
         elif evtype == 'exit':
+            # Process exited, handle event.
+            self.bootstrapped.pop(msg['pid'], None)
             producer = self.producers.pop(msg['pid'], None)
             if producer is not None:
                 producer.stop()
 
     @in_loop
-    def start(self):
+    def _pre_start(self):
         manager = self.manager
         manager.subscribe('.', self._on_event)
         manager.add_process(self.process_name,
                             numprocesses=self.app.config.WORKERS,
                             **self._create_arguments())
         manager.start()
+
+    def start(self):
+        self._pre_start()
+        self._is_started.wait(30.0)
+        if not self._is_started.is_set():
+            logger.error('Timeout when starting processes.')
 
     @in_loop
     def _pre_stop(self):
@@ -202,4 +245,6 @@ class ProcessManagerComponent(StartStopComponent):
     requires = ('loop', 'listeners')
 
     def create(self, parent):
-        return ProcessManager(parent.app, parent.listeners, parent)
+        processes = parent.processes = \
+            ProcessManager(parent.app, parent.listeners, parent)
+        return processes
