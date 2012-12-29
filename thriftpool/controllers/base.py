@@ -96,7 +96,7 @@ class Controller(LogsMixin):
             self.terminate()
         except Exception as exc:
             self._error('Unrecoverable error: %r', exc, exc_info=True)
-            self.stop()
+            self.terminate()
         except (KeyboardInterrupt, SystemExit):
             self._debug('Terminating from keyboard')
             self.stop()

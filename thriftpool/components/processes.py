@@ -3,8 +3,6 @@ from __future__ import absolute_import
 
 import logging
 import sys
-import struct
-import cPickle as pickle
 
 from pyuv import Pipe
 from six import iteritems
@@ -12,12 +10,22 @@ from six import iteritems
 from thriftworker.utils.loop import in_loop
 from thriftworker.utils.decorators import cached_property
 from thriftworker.utils.mixin import LoopMixin
+
+from thriftpool.exceptions import SystemTerminate
 from thriftpool.utils.mixin import LogsMixin
+from thriftpool.utils.serializers import StreamSerializer
 
 from .base import StartStopComponent
 from .proto import Producer
 
 logger = logging.getLogger(__name__)
+
+
+#: How long we should wait for process initialization.
+START_TIMEOUT = 60.0
+
+#: How long we should wait for process termination.
+STOP_TIMEOUT = 60.0
 
 
 class RedirectStream(object):
@@ -34,17 +42,21 @@ class RedirectStream(object):
             channel.open(fd)
 
     def write(self, data):
-        if self.channel is not None:
+        """Write data in asynchronous way."""
+        if self.channel is not None and not self.channel.closed:
             self.channel.write(data)
         else:
             self.stream.write(data)
 
     def close(self):
-        if self.channel is not None and self.channel.active:
-            self.channel.stop()
+        """Close stream if needed."""
+        if self.channel is not None and not self.channel.closed:
+            self.channel.close()
 
 
 class Producers(dict):
+
+    Producer = Producer
 
     def __getattr__(self, name):
 
@@ -56,6 +68,20 @@ class Producers(dict):
 
         inner_function.__name__ = name
         return inner_function
+
+    def create(self, loop, process):
+        """Create new producer for given process."""
+        incoming = process.streams['incoming']
+        outgoing = process.streams['outgoing']
+        producer = self[process.id] = \
+            self.Producer(loop, incoming, outgoing, process)
+        return producer
+
+    def remove(self, pid):
+        """Stop and remove producer by process id."""
+        producer = self.producers.pop(pid, None)
+        if producer is not None:
+            producer.stop()
 
 
 class ProcessManager(LogsMixin, LoopMixin):
@@ -69,9 +95,10 @@ class ProcessManager(LogsMixin, LoopMixin):
     script = 'from thriftpool.bin.thriftworker import main; main();'
 
     def __init__(self, app, listeners, controller):
+        self.producers = Producers()
+        self.serializers = StreamSerializer()
         self.app = app
         self.listeners = listeners
-        self.producers = Producers()
         self.controller = controller
         self.bootstrapped = {}
         super(ProcessManager, self).__init__()
@@ -112,10 +139,7 @@ class ProcessManager(LogsMixin, LoopMixin):
         return RedirectStream(self.loop, sys.stderr)
 
     def _create_producer(self, process):
-        incoming = process.streams['incoming']
-        outgoing = process.streams['outgoing']
-        producer = self.producers[process.id] = \
-            Producer(self.loop, incoming, outgoing, process)
+        producer = self.producers.create(self.loop, process)
         producer.start()
         return producer
 
@@ -136,7 +160,7 @@ class ProcessManager(LogsMixin, LoopMixin):
                 self._is_started.set()
 
         # And bootstrap remote process.
-        producer.apply('change_title', args=[name])
+        producer.change_title(name)
         descriptors = {i: listener.name
                        for i, listener in iteritems(self.listeners.enumerated)}
         producer.register_acceptors(descriptors).link(bootstrap_done)
@@ -144,8 +168,7 @@ class ProcessManager(LogsMixin, LoopMixin):
     def _do_handshake(self, process):
         # Pass application to created process.
         stream = process.streams['handshake']
-        message = pickle.dumps(self.app)
-        stream.write(struct.pack('I', len(message)) + message)
+        stream.write(self.serializers.encode_with_length(self.app))
 
         def handshake_done(evtype, info):
             stream.unsubscribe(handshake_done)
@@ -194,9 +217,7 @@ class ProcessManager(LogsMixin, LoopMixin):
         elif evtype == 'exit':
             # Process exited, handle event.
             self.bootstrapped.pop(msg['pid'], None)
-            producer = self.producers.pop(msg['pid'], None)
-            if producer is not None:
-                producer.stop()
+            self.producers.remove(msg['pid'])
 
     @in_loop
     def _pre_start(self):
@@ -209,9 +230,11 @@ class ProcessManager(LogsMixin, LoopMixin):
 
     def start(self):
         self._pre_start()
-        self._is_started.wait(30.0)
+        self._is_started.wait(START_TIMEOUT)
         if not self._is_started.is_set():
-            logger.error('Timeout when starting processes.')
+            self._error('Timeout when starting processes.')
+            self._pre_stop()
+            raise SystemTerminate()
 
     @in_loop
     def _pre_stop(self):
@@ -228,9 +251,10 @@ class ProcessManager(LogsMixin, LoopMixin):
 
     def stop(self):
         self._pre_stop()
-        self._is_stopped.wait(30.0)
+        self._is_stopped.wait(STOP_TIMEOUT)
         if not self._is_stopped.is_set():
-            logger.error('Timeout when stopping processes.')
+            self._error('Timeout when terminating processes.')
+            raise SystemTerminate()
         self._post_stop()
 
     def apply(self, method_name, callback=None, args=None, kwargs=None):
