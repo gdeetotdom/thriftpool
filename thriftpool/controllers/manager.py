@@ -23,3 +23,4 @@ class ManagerController(Controller):
     Namespace = ManagerNamespace
 
     listeners = None
+    processes = None

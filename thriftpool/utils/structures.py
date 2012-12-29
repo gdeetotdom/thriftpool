@@ -11,6 +11,8 @@ from __future__ import absolute_import
 from collections import defaultdict
 import itertools
 
+from six import iteritems, iterkeys
+
 __all__ = ['DependencyGraph', 'AttributeDict', 'AggregatedView']
 
 
@@ -162,7 +164,7 @@ class DependencyGraph(object):
         fh.write("}\n")
 
     def __iter__(self):
-        return self.adjacent.iterkeys()
+        return iterkeys(self.adjacent)
 
     def __getitem__(self, node):
         return self.adjacent[node]
@@ -174,7 +176,7 @@ class DependencyGraph(object):
         return obj in self.adjacent
 
     def _iterate_items(self):
-        return self.adjacent.iteritems()
+        return iteritems(self.adjacent)
     items = iteritems = _iterate_items
 
     def __repr__(self):

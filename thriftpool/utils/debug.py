@@ -78,9 +78,9 @@ class RequestLogger(object):
                 # Log response.
                 self.logger.info(SERVED_REQUEST_MESSAGE.format(
                     prefix=black('Out [{0}]:'.format(request)),
-                    took='{:.4f} ms'.format(duration * 1000)
+                    took='{:.3f} ms'.format(duration * 1000)
                          if duration < 0.001
-                         else '{:.4f} s'.format(duration),
+                         else '{:.3f} s'.format(duration),
                     result=blue(pformat(result)),
                 ))
                 return result

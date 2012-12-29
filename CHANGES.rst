@@ -1,8 +1,13 @@
 Changelog
 =========
 
-0.1.11 (unreleased)
--------------------
+0.1.14
+------
+
+- Start listeners after workers;
+
+0.1.11
+------
 
 - Add support for prefork model;
 

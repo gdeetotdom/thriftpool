@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import signal as _signal
 
+from six import iteritems, string_types
+
 __all__ = ['signals']
 
 
@@ -56,7 +58,7 @@ class Signals(object):
         """Get signal number from signal name."""
         if isinstance(signal_name, int):
             return signal_name
-        if not isinstance(signal_name, basestring) \
+        if not isinstance(signal_name, string_types) \
                 or not signal_name.isupper():
             raise TypeError('signal name must be uppercase string.')
         if not signal_name.startswith('SIG'):
@@ -98,7 +100,7 @@ class Signals(object):
 
     def update(self, _d_=None, **sigmap):
         """Set signal handlers from a mapping."""
-        for signal_name, handler in dict(_d_ or {}, **sigmap).iteritems():
+        for signal_name, handler in iteritems(dict(_d_ or {}, **sigmap)):
             self[signal_name] = handler
 
 signals = Signals()

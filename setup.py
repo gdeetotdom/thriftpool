@@ -2,7 +2,7 @@ import os
 import re
 import sys
 
-from setuptools import setup, find_packages, Extension
+from setuptools import setup, find_packages
 
 # Check requirements.
 
@@ -75,10 +75,8 @@ setup(name='thriftpool',
       keywords='thrift soa',
       license='BSD',
       packages=find_packages(),
-      ext_modules=[Extension("thriftpool.processes.sync",
-                             ["thriftpool/processes/sync.c"])],
       install_requires=['thrift', 'pyuv>=0.8.3', 'six',
-                        'thriftworker>=0.1.9', 'psutil'],
+                        'gaffer>0.4.4', 'thriftworker>=0.1.11'],
       entry_points=entrypoints,
       zip_safe=False
 )

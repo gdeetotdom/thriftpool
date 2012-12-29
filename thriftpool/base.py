@@ -4,6 +4,8 @@ this class instead of directly registering new handler.
 """
 from __future__ import absolute_import
 
+from six import with_metaclass
+
 from thriftpool import thriftpool
 from thriftpool.exceptions import RegistrationError
 from thriftpool.utils.structures import AttributeDict
@@ -46,6 +48,8 @@ class HandlerMeta(OptionsMeta):
     """Register new classes as handlers."""
 
     def __new__(mcs, name, bases, attrs):
+        if name == 'NewBase':
+            return super(HandlerMeta, mcs).__new__(mcs, name, bases, attrs)
         if 'options' not in attrs:
             raise RegistrationError('Class {0!r} missed "options" attribute.'.
                                     format(name))
@@ -56,10 +60,8 @@ class HandlerMeta(OptionsMeta):
         return thriftpool.register(**klass.meta)(klass)
 
 
-class BaseHandler(object):
+class BaseHandler(with_metaclass(HandlerMeta)):
     """Base class for handler."""
-
-    __metaclass__ = HandlerMeta
 
     class options:
         abstract = True

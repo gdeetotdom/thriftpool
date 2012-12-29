@@ -19,14 +19,17 @@ class Logging(object):
     app = None
 
     def __init__(self):
-        self.logfile = self.app.config.LOG_FILE
-        self.loglevel = self.app.config.LOGGING_LEVEL
-        self.format = self.app.config.DEFAULT_LOG_FMT
-        self.colored = colored(enabled=self.colorize(self.logfile))
+        config = self.app.config
+        logfile = self.logfile = config.LOG_FILE
+        self.loglevel = config.LOGGING_LEVEL
+        self.format = config.DEFAULT_LOG_FMT
+        colorized = config.LOG_FORCE_COLORIZED = self.colorized = \
+            config.LOG_FORCE_COLORIZED or self.colorize(logfile)
+        self.colored = colored(enabled=colorized)
         self.request_logger = None
 
-    def redirect_stdouts_to_logger(self, logger, loglevel=None,
-                                   stdout=True, stderr=True):
+    def redirect_stdouts_to_logger(self, logger, loglevel=None, stdout=True,
+                                   stderr=True):
         """Redirect :class:`sys.stdout` and :class:`sys.stderr` to a
         logging instance.
 

@@ -25,9 +25,10 @@ class ListenersComponent(StartStopComponent):
 
 class ListenersManager(LogsMixin):
 
-    def __init__(self, app, listeners):
+    def __init__(self, app, listeners, processes):
         self.app = app
         self.listeners = listeners
+        self.processes = processes
         super(ListenersManager, self).__init__()
 
     def start(self):
@@ -38,6 +39,7 @@ class ListenersManager(LogsMixin):
             listener.start()
             listener_started.send(self, listener=listener, slot=slot,
                                   app=self.app)
+            self.processes.producers.start_acceptor(listener.name)
             self._info("Starting listener on '%s:%d' for service '%s'.",
                        listener.host, listener.port, listener.name)
         listeners_started.send(self, app=self.app)
@@ -61,4 +63,5 @@ class ListenersManagerComponent(StartStopComponent):
     requires = ('loop', 'listeners', 'process_manager')
 
     def create(self, parent):
-        return ListenersManager(parent.app, parent.listeners)
+        return ListenersManager(parent.app, parent.listeners,
+                                parent.processes)
