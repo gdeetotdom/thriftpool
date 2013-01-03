@@ -101,7 +101,7 @@ class Controller(LogsMixin):
             self._debug('Terminating from keyboard')
             self.stop()
 
-        self._debug('Controller started!')
+        self._info('Whole controller started!')
 
         self.after_start()
 
@@ -135,7 +135,7 @@ class Controller(LogsMixin):
 
         self.on_shutdown()
 
-        self._debug('Controller stopped!')
+        self._info('Whole controller stopped!')
 
         self._state = self.TERMINATED
         self._shutdown_complete.set()

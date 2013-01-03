@@ -34,12 +34,13 @@ class ListenersManager(LogsMixin):
     def start(self):
         """Start all registered listeners."""
         slots = self.app.slots
+        producers = self.processes.producers
         for listener in self.listeners:
             slot = slots[listener.name]
             listener.start()
             listener_started.send(self, listener=listener, slot=slot,
                                   app=self.app)
-            self.processes.producers.start_acceptor(listener.name)
+            producers.start_acceptor(listener.name)
             self._info("Starting listener on '%s:%d' for service '%s'.",
                        listener.host, listener.port, listener.name)
         listeners_started.send(self, app=self.app)
@@ -47,12 +48,14 @@ class ListenersManager(LogsMixin):
     def stop(self):
         """Stop all registered listeners."""
         slots = self.app.slots
+        producers = self.processes.producers
         for listener in self.listeners:
             slot = slots[listener.name]
             self._info("Stopping listening on '%s:%d', service '%s'.",
                        listener.host, listener.port, listener.name)
             listener_stopped.send(self, listener=listener, slot=slot,
                                   app=self.app)
+            producers.stop_acceptor(listener.name)
             listener.stop()
         listeners_stopped.send(self, app=self.app)
 

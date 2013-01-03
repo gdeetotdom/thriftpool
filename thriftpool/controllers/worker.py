@@ -61,3 +61,8 @@ class WorkerController(Controller):
         """Start acceptors by it's name."""
         self._debug('Start acceptor %r', name)
         self.acceptors.start_by_name(name)
+
+    def stop_acceptor(self, name):
+        """Stop acceptors by it's name."""
+        self._debug('Stop acceptor %r', name)
+        self.acceptors.stop_by_name(name)

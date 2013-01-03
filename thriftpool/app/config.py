@@ -9,6 +9,7 @@ __all__ = ['Configuration']
 DEFAULT_SETTINGS = dict(
     DEBUG=True,
     DEFAULT_LOG_FMT="[%(asctime)s %(levelname)s] %(message)s",
+    DEFAULT_WORKER_LOG_FMT="[%(asctime)s %(levelname)s] [%(process)d] %(message)s",
     LOGGING_LEVEL=logging.DEBUG,
     LOG_REQUESTS=False,
     LOG_FILE=None,

@@ -3,6 +3,7 @@ from __future__ import absolute_import
 
 import logging
 import sys
+import os
 
 from pyuv import Pipe
 from six import iteritems
@@ -32,13 +33,15 @@ class RedirectStream(object):
     """Try to write to stream asynchronous."""
 
     def __init__(self, loop, stream):
+        self.fd = None
         self.stream = stream
         try:
-            fd = stream.fileno()
+            fd = self.fd = stream.fileno()
         except AttributeError:
             self.channel = None
         else:
             channel = self.channel = Pipe(loop)
+            setattr(channel, 'bypass', True)
             channel.open(fd)
 
     def write(self, data):
@@ -47,11 +50,6 @@ class RedirectStream(object):
             self.channel.write(data)
         else:
             self.stream.write(data)
-
-    def close(self):
-        """Close stream if needed."""
-        if self.channel is not None and not self.channel.closed:
-            self.channel.close()
 
 
 class Producers(dict):
@@ -225,6 +223,7 @@ class ProcessManager(LogsMixin, LoopMixin):
         manager.subscribe('.', self._on_event)
         manager.add_process(self.process_name,
                             numprocesses=self.app.config.WORKERS,
+                            env={'IS_WORKER': '1'},
                             **self._create_arguments())
         manager.start()
 
@@ -244,18 +243,12 @@ class ProcessManager(LogsMixin, LoopMixin):
         stop_callback = lambda *args: self._is_stopped.set()
         self.manager.stop(stop_callback)
 
-    @in_loop
-    def _post_stop(self):
-        self._stderr.close()
-        self._stdout.close()
-
     def stop(self):
         self._pre_stop()
         self._is_stopped.wait(STOP_TIMEOUT)
         if not self._is_stopped.is_set():
             self._error('Timeout when terminating processes.')
             raise SystemTerminate()
-        self._post_stop()
 
     def apply(self, method_name, callback=None, args=None, kwargs=None):
         """Run given method across all processes."""
