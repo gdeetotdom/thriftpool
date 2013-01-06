@@ -25,6 +25,5 @@ class ProcessorMixin(object):
             exc.write(oprot)
             oprot.writeMessageEnd()
             oprot.trans.flush()
-            return
 
-        return True
+        return name
