@@ -12,6 +12,7 @@ DEFAULT_SETTINGS = dict(
     DEFAULT_WORKER_LOG_FMT="[%(asctime)s %(levelname)s] [%(process)d] %(message)s",
     LOGGING_LEVEL=logging.DEBUG,
     LOG_REQUESTS=False,
+    LOG_TORNADO_REQUESTS=False,
     LOG_FILE=None,
     LOG_FORCE_COLORIZED=False,
     REDIRECT_STDOUT=True,
@@ -24,6 +25,7 @@ DEFAULT_SETTINGS = dict(
     WORKER_TYPE='sync',
     WORKERS=1,
     CONCURRENCY=1,
+    TORNADO_ENDPOINTS=[],
 )
 
 

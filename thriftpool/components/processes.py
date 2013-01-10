@@ -1,10 +1,13 @@
 """Manage process pool."""
 from __future__ import absolute_import
 
+import json
 import logging
 import sys
 import os
 
+from gaffer.http.util import CorsHandler
+from gaffer.http_handler import HttpHandler, HttpEndpoint
 from pyuv import Pipe
 from six import iteritems
 
@@ -12,6 +15,7 @@ from thriftworker.utils.loop import in_loop
 from thriftworker.utils.decorators import cached_property
 from thriftworker.utils.mixin import LoopMixin
 
+from thriftpool.app import current_app
 from thriftpool.exceptions import SystemTerminate
 from thriftpool.utils.mixin import LogsMixin
 from thriftpool.utils.serializers import StreamSerializer
@@ -27,6 +31,63 @@ START_TIMEOUT = 60.0
 
 #: How long we should wait for process termination.
 STOP_TIMEOUT = 60.0
+
+
+class BaseHandler(CorsHandler):
+
+    def initialize(self, clients):
+        self._clients = clients
+
+    def _execute(self, *args, **kwargs):
+        current_app.hub.spawn(super(BaseHandler, self)._execute, *args, **kwargs)
+
+
+class ClientsHandler(BaseHandler):
+
+    def get(self):
+        self.preflight()
+        self.set_status(200)
+        self.write(json.dumps(self._clients.keys()))
+
+
+class BaseClientHandler(BaseHandler):
+
+    def get_data(self, proxy):
+        raise NotImplementedError('subclass responsibility')
+
+    def get(self, *args):
+        self.preflight()
+
+        try:
+            pid = int(args[0])
+        except ValueError:
+            self.set_status(400)
+            self.write({"error": "bad_value"})
+            return
+
+        if pid in self._clients:
+            self.set_status(200)
+        else:
+            self.set_status(404)
+            return
+
+        client = self._clients[pid]
+        data = client.spawn(self.get_data).get()
+        self.write(json.dumps(data))
+
+
+class CounterHandler(BaseClientHandler):
+
+    def get_data(self, proxy):
+        return {'{0}::{1}'.format(service, method): value
+                for (service, method), value in proxy.get_counters().items()}
+
+
+class TimerHandler(BaseClientHandler):
+
+    def get_data(self, proxy):
+        return {'{0}::{1}'.format(service, method): value
+                for (service, method), value in proxy.get_timers().items()}
 
 
 class RedirectStream(object):
@@ -157,7 +218,7 @@ class ProcessManager(LogsMixin, LoopMixin):
             self._bootstrapped.remove(msg['pid'])
             self.clients.unregister(msg['pid'])
 
-    def _create_proc_args(self):
+    def _create_proc_kwargs(self):
         """Create arguments for worker."""
         config = self.app.config
         worker_type = config.WORKER_TYPE
@@ -176,12 +237,29 @@ class ProcessManager(LogsMixin, LoopMixin):
                     numprocesses=config.WORKERS,
                     redirect_input=True)
 
+    def _create_apps(self):
+        """Create applications for gaffer."""
+        apps = []
+        options = dict(clients=self.clients)
+        handlers = [
+            (r'/timers', ClientsHandler, options),
+            (r'/timers/([0-9^/]+)', TimerHandler, options),
+            (r'/counters', ClientsHandler, options),
+            (r'/counters/([0-9^/]+)', CounterHandler, options),
+        ]
+        endpoints = self.app.config.TORNADO_ENDPOINTS
+        if endpoints:
+            apps.append(HttpHandler(handlers=handlers,
+                log_function=self.app.log.log_tornado_request,
+                endpoints=[HttpEndpoint(uri=uri) for uri in endpoints]))
+        return apps
+
     @in_loop
     def _setup(self):
         manager = self.manager
         manager.subscribe('.', self._on_event)
-        manager.add_process(self.process_name, **self._create_proc_args())
-        manager.start()
+        manager.add_process(self.process_name, **self._create_proc_kwargs())
+        manager.start(apps=self._create_apps())
 
     def start(self):
         self._setup()
@@ -203,11 +281,6 @@ class ProcessManager(LogsMixin, LoopMixin):
         if not self._is_stopped.is_set():
             self._error('Timeout when terminating processes.')
             raise SystemTerminate()
-
-    def apply(self, method_name, callback=None, args=None, kwargs=None):
-        """Run given method across all processes."""
-        for producer in self.producers.values():
-            producer.apply(method_name, callback, args, kwargs)
 
 
 class ProcessManagerComponent(StartStopComponent):

@@ -30,6 +30,7 @@ class Logging(object):
             config.LOG_FORCE_COLORIZED or self.colorize(logfile)
         self.colored = colored(enabled=colorized)
         self.request_logger = None
+        self.tornado_logger = None
 
     def redirect_stdouts_to_logger(self, logger, loglevel=None, stdout=True,
                                    stderr=True):
@@ -81,6 +82,9 @@ class Logging(object):
         self.request_logger = RequestLogger(logger, self.colored)
         self.request_logger.setup()
 
+    def setup_tornado_logger(self):
+        self.tornado_logger = logging.getLogger('thriftpool.tornado')
+
     def setup(self):
         root = logging.getLogger()
         root.setLevel(self.loglevel)
@@ -94,3 +98,19 @@ class Logging(object):
                                      loglevel=self.loglevel)
         if self.app.config.LOG_REQUESTS:
             self.setup_request_logging()
+        if self.app.config.LOG_TORNADO_REQUESTS:
+            self.setup_tornado_logger()
+
+    def log_tornado_request(self, handler):
+        logger = self.tornado_logger
+        if logger is None:
+            return
+        if handler.get_status() < 400:
+            log_method = logger.info
+        elif handler.get_status() < 500:
+            log_method = logger.warning
+        else:
+            log_method = logger.error
+        request_time = 1000.0 * handler.request.request_time()
+        log_method("%d %s %.2fms", handler.get_status(),
+                   handler._request_summary(), request_time)

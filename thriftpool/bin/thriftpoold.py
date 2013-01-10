@@ -34,6 +34,8 @@ class ManagerCommand(BaseCommand):
                action='store', type=str, nargs='*'),
         Option('--foreground', help='Don not detach from console',
                action='store_true'),
+        Option('--endpoint', help='Which address tornado should listen?',
+               action='store', type=str, nargs='*'),
     )
 
     def change_process_title(self, app):
@@ -72,6 +74,10 @@ class ManagerCommand(BaseCommand):
             modules = list(app.config.MODULES)
             modules.extend(options['modules'])
             app.config.MODULES = modules
+        if options['endpoint']:
+            modules = list(app.config.TORNADO_ENDPOINTS)
+            modules.extend(options['endpoint'])
+            app.config.TORNADO_ENDPOINTS = modules
 
         self.change_process_title(app)
         controller = app.ManagerController()
