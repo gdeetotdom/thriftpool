@@ -1,2 +1,1 @@
-cython
 git+https://github.com/gdeetotdom/thriftworker.git#egg=thriftworker
