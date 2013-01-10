@@ -41,14 +41,6 @@ components Package
     :undoc-members:
     :show-inheritance:
 
-:mod:`proto` Module
--------------------
-
-.. automodule:: thriftpool.components.proto
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 :mod:`worker` Module
 --------------------
 

@@ -1,14 +1,6 @@
 utils Package
 =============
 
-:mod:`counters` Module
-----------------------
-
-.. automodule:: thriftpool.utils.counters
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 :mod:`debug` Module
 -------------------
 
@@ -53,6 +45,14 @@ utils Package
 -----------------------
 
 .. automodule:: thriftpool.utils.platforms
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+:mod:`serializers` Module
+-------------------------
+
+.. automodule:: thriftpool.utils.serializers
     :members:
     :undoc-members:
     :show-inheritance:

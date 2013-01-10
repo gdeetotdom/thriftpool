@@ -119,10 +119,6 @@ class ThriftPool(SubclassMixin):
                 self.slots.register(**params)
             self._finalized = True
 
-    @property
-    def loop(self):
-        return self.thriftworker.loop
-
     @cached_property
     def protocol_factory(self):
         """Create handler instance."""
@@ -133,6 +129,14 @@ class ThriftPool(SubclassMixin):
         return ThriftWorker(port_range=self.config.SERVICE_PORT_RANGE,
                             protocol_factory=self.protocol_factory,
                             pool_size=self.config.CONCURRENCY)
+
+    @property
+    def loop(self):
+        return self.thriftworker.loop
+
+    @property
+    def hub(self):
+        return self.thriftworker.hub
 
     @cached_property
     def gaffer_manager(self):

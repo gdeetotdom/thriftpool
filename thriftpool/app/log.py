@@ -4,6 +4,7 @@ from __future__ import absolute_import
 from logging.handlers import WatchedFileHandler
 import logging
 import sys
+import os
 
 from thriftpool.signals import setup_logging, after_logging_setup
 from thriftpool.utils.logs import ColorFormatter, LoggingProxy
@@ -22,7 +23,9 @@ class Logging(object):
         config = self.app.config
         logfile = self.logfile = config.LOG_FILE
         self.loglevel = config.LOGGING_LEVEL
-        self.format = config.DEFAULT_LOG_FMT
+        self.format = config.DEFAULT_WORKER_LOG_FMT \
+                      if os.getenv('IS_WORKER', False) \
+                      else config.DEFAULT_LOG_FMT
         colorized = config.LOG_FORCE_COLORIZED = self.colorized = \
             config.LOG_FORCE_COLORIZED or self.colorize(logfile)
         self.colored = colored(enabled=colorized)

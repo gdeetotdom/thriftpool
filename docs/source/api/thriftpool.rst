@@ -44,6 +44,7 @@ Subpackages
     thriftpool.controllers
     thriftpool.remote
     thriftpool.request
+    thriftpool.rpc
     thriftpool.tests
     thriftpool.utils
 

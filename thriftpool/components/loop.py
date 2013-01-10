@@ -8,7 +8,7 @@ class BaseLoopComponent(StartStopComponent):
     abstract = True
 
     def create(self, parent):
-        return parent.app.thriftworker.loop_container
+        return parent.app.thriftworker.hub
 
 
 class WorkerLoopComponent(BaseLoopComponent):

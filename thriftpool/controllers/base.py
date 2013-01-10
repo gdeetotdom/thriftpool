@@ -96,12 +96,12 @@ class Controller(LogsMixin):
             self.terminate()
         except Exception as exc:
             self._error('Unrecoverable error: %r', exc, exc_info=True)
-            self.stop()
+            self.terminate()
         except (KeyboardInterrupt, SystemExit):
             self._debug('Terminating from keyboard')
             self.stop()
 
-        self._debug('Controller started!')
+        self._debug('Whole controller started!')
 
         self.after_start()
 
@@ -135,7 +135,7 @@ class Controller(LogsMixin):
 
         self.on_shutdown()
 
-        self._debug('Controller stopped!')
+        self._debug('Whole controller stopped!')
 
         self._state = self.TERMINATED
         self._shutdown_complete.set()
