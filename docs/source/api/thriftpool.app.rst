@@ -1,6 +1,14 @@
 app Package
 ===========
 
+:mod:`app` Package
+------------------
+
+.. automodule:: thriftpool.app
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 :mod:`_state` Module
 --------------------
 

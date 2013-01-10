@@ -43,7 +43,7 @@ class WorkerController(Controller):
 
     def change_title(self, name):
         """Change process title."""
-        self._debug('Change process title to %r', name)
+        self._debug('Change process title to %r.', name)
         set_process_title(name)
 
     def register_acceptors(self, descriptors):
@@ -54,15 +54,15 @@ class WorkerController(Controller):
         for fd, name in iteritems(descriptors):
             slot = slots[name]
             fd += delta
-            self._debug('Register acceptor %r with fd %d', name, fd)
+            self._debug('Register acceptor %r with fd %d.', name, fd)
             acceptors.register(fd, name, backlog=slot.listener.backlog)
 
     def start_acceptor(self, name):
         """Start acceptors by it's name."""
-        self._debug('Start acceptor %r', name)
+        self._debug('Start acceptor %r.', name)
         self.acceptors.start_by_name(name)
 
     def stop_acceptor(self, name):
         """Stop acceptors by it's name."""
-        self._debug('Stop acceptor %r', name)
+        self._debug('Stop acceptor %r.', name)
         self.acceptors.stop_by_name(name)

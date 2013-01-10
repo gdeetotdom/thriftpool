@@ -11,7 +11,7 @@ from thriftworker.utils.loop import in_loop
 from thriftworker.utils.mixin import LoopMixin
 
 from thriftpool.components.base import StartStopComponent
-from thriftpool.components.proto import Consumer
+from thriftpool.rpc.transport import Consumer
 from thriftpool.utils.mixin import LogsMixin
 
 logger = logging.getLogger(__name__)
@@ -95,7 +95,7 @@ class PerspectiveBroker(LogsMixin, LoopMixin):
     def start(self):
         for stream in self.streams:
             stream.start()
-        self.handshake_stream.write('ready')
+        self.handshake_stream.write('x')
         self.consumer.start()
 
     @in_loop

@@ -19,16 +19,6 @@ class ServicesComponent(LogsMixin, StartStopComponent):
             services.register(slot.name, slot.service.processor)
 
 
-class AcceptorsComponent(StartStopComponent):
-
-    name = 'worker.acceptors'
-    requires = ('loop',)
-
-    def create(self, parent):
-        acceptors = parent.acceptors = parent.app.thriftworker.acceptors
-        return acceptors
-
-
 class WorkerComponent(StartStopComponent):
 
     name = 'worker.worker'
@@ -36,3 +26,13 @@ class WorkerComponent(StartStopComponent):
 
     def create(self, parent):
         return parent.app.thriftworker.worker
+
+
+class AcceptorsComponent(StartStopComponent):
+
+    name = 'worker.acceptors'
+    requires = ('loop', 'worker')
+
+    def create(self, parent):
+        acceptors = parent.acceptors = parent.app.thriftworker.acceptors
+        return acceptors
