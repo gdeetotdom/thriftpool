@@ -249,11 +249,27 @@ class AggregatedView(AttributeDictMixin):
         return iter(set(itertools.chain.from_iterable(
                         [self._changes] + self._underlying_dicts)))
 
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def setdefault(self, key, default):
+        try:
+            return self[key]
+        except KeyError:
+            self[key] = default
+            return default
+
     def update(self, *args, **kwargs):
         return self._changes.update(*args, **kwargs)
 
     def items(self):
         return [(key, self[key]) for key in self]
+
+    def values(self):
+        return [self[key] for key in self]
 
     def keys(self):
         return list(self)
