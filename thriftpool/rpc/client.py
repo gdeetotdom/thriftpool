@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+from functools import partial
+
 from thriftworker.utils.loop import in_loop
 
 from thriftpool.app import current_app
@@ -15,9 +17,15 @@ class Proxy(object):
         """Create inner function that should enqueue remote procedure call."""
         producer = self.__producer
 
+        def execute_callback(waiter, obj):
+            if isinstance(obj, Exception):
+                waiter.throw(obj)
+            else:
+                waiter.switch(obj)
+
         def inner_function(*args, **kwargs):
             waiter = current_app.hub.Waiter()
-            producer.apply(name, callback=waiter.switch,
+            producer.apply(name, callback=partial(execute_callback, waiter),
                            args=args, kwargs=kwargs)
             return waiter.get()
 
@@ -42,4 +50,4 @@ class Client(object):
         """
         assert callable(run), 'given object not callable'
         kwargs.setdefault('proxy', self.__proxy)
-        current_app.hub.spawn(run, **kwargs)
+        return current_app.hub.spawn(run, **kwargs)

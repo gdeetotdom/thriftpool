@@ -66,3 +66,11 @@ class WorkerController(Controller):
         """Stop acceptors by it's name."""
         self._debug('Stop acceptor %r.', name)
         self.acceptors.stop_by_name(name)
+
+    def get_counters(self):
+        """Return counters here."""
+        return self.app.thriftworker.counters.to_dict()
+
+    def get_timers(self):
+        """Return timers here."""
+        return self.app.thriftworker.timers.to_dict()

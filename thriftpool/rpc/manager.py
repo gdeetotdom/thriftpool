@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+from thriftworker.utils.loop import in_loop
+
 from thriftpool.app import current_app
 
 from .transport import Producer
@@ -16,6 +18,18 @@ class Clients(object):
         self._producers = {}
         self._clients = {}
         super(Clients, self).__init__()
+
+    def __iter__(self):
+        return iter(self._clients)
+
+    def __getitem__(self, key):
+        return self._clients[key]
+
+    def __contains__(self, key):
+        return key in self._clients
+
+    def keys(self):
+        return self._clients.keys()
 
     def register(self, process, callback=None, **kwargs):
         """Create new producer for given process."""
@@ -40,7 +54,10 @@ class Clients(object):
         for pid in list(self._producers):
             self.unregister(pid)
 
+    @in_loop
     def spawn(self, run, *args, **kwargs):
         """Map given function to all clients."""
-        for client in self._clients.values():
-            client.spawn(run, *args, **kwargs)
+        greenlets = {}
+        for key, client in self._clients.items():
+            greenlets[key] = client.spawn(run, *args, **kwargs)
+        return greenlets
