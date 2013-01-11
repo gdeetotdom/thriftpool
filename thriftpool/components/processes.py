@@ -79,14 +79,14 @@ class BaseClientHandler(BaseHandler):
 class CounterHandler(BaseClientHandler):
 
     def get_data(self, proxy):
-        return {'{0}::{1}'.format(service, method): value
+        return {'{0}.{1}'.format(service, method): value
                 for (service, method), value in proxy.get_counters().items()}
 
 
 class TimerHandler(BaseClientHandler):
 
     def get_data(self, proxy):
-        return {'{0}::{1}'.format(service, method): value
+        return {'{0}.{1}'.format(service, method): value
                 for (service, method), value in proxy.get_timers().items()}
 
 

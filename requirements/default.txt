@@ -4,3 +4,4 @@ setproctitle
 psutil
 six
 gaffer
+greenlet
