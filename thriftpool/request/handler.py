@@ -14,10 +14,22 @@ from thriftpool.exceptions import WrappingError
 logger = logging.getLogger(__name__)
 
 
+def maybe_wraps(method):
+    """Ignore wrapping exceptions."""
+
+    def inner_wrapper(fn):
+        try:
+            return wraps(method)(fn)
+        except AttributeError:
+            return fn
+
+    return inner_wrapper
+
+
 class guarded_method(object):
     """Create guarded method for handler."""
 
-    def __init__(self, name, doc):
+    def __init__(self, name, doc=None):
         self.__name__ = name
         self.__doc__ = doc
 
@@ -35,7 +47,7 @@ class guarded_method(object):
             if decorator is not None:
                 method = decorator(method)
 
-        @wraps(method)
+        @maybe_wraps(method)
         def inner_method(*args, **kwargs):
             """Method that handle unknown exception correctly."""
             stack.add(handler, method, args, kwargs, service_name)
@@ -49,7 +61,7 @@ class guarded_method(object):
                     # application exception to thrift transport.
                     logger.exception(exc)
                     code = TApplicationException.INTERNAL_ERROR
-                    msg = "({0}) {1}".format(type(exc).__name__, str(exc))
+                    msg = "{0}({1})".format(type(exc).__name__, str(exc))
                     raise TApplicationException(code, msg)
 
         return inner_method

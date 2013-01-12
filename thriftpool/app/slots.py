@@ -98,6 +98,10 @@ class Repository(set):
         """Get slot by name."""
         return self._names[name]
 
+    def __contains__(self, name):
+        """Check that given service registered in repository."""
+        return name in self._names
+
     def register(self, name, processor_cls, handler_cls, **opts):
         """Register new service in repository."""
         # Create listener.

@@ -6,11 +6,12 @@
     Terminals and colors.
 
 """
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import platform
+from six import text_type
 
-from thriftpool.utils.encoding import smart_str
+from thriftpool.utils.encoding import smart_str, smart_unicode
 
 
 BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE = range(8)
@@ -53,17 +54,17 @@ class colored(object):
                       'white': self.white}
 
     def _add(self, a, b):
-        return unicode(a) + unicode(b)
+        return text_type(a) + text_type(b)
 
     def _fold_no_color(self, a, b):
         try:
             A = a.no_color()
         except AttributeError:
-            A = unicode(a)
+            A = text_type(a)
         try:
             B = b.no_color()
         except AttributeError:
-            B = unicode(b)
+            B = text_type(b)
         return smart_str(A) + smart_str(B)
 
     def no_color(self):
@@ -75,13 +76,13 @@ class colored(object):
         prefix = ''
         if self.enabled:
             prefix = self.op
-        return prefix + smart_str(reduce(self._add, self.s))
+        return smart_str(prefix) + smart_str(reduce(self._add, self.s))
 
     def __unicode__(self):
         suffix = ''
         if self.enabled:
             suffix = RESET_SEQ
-        return smart_str(self.embed() + suffix)
+        return smart_unicode(self.embed()) + suffix
 
     def __str__(self):
         return smart_str(self.__unicode__())
@@ -159,4 +160,4 @@ class colored(object):
         return self.node(s or [''], RESET_SEQ)
 
     def __add__(self, other):
-        return unicode(self) + unicode(other)
+        return text_type(self) + text_type(other)
