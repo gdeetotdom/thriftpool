@@ -53,6 +53,7 @@ class TestGuardedMethod(TestCase):
     def test_call(self):
         value = object()
         self.assertIs(value, self.guarded.ping(value))
+        self.assertTrue(self.handler.ping.called)
 
     def test_unwrapped_method(self):
         # unwrapped method not touched, check this
