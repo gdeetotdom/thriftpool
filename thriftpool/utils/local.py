@@ -12,17 +12,12 @@ from __future__ import absolute_import
 
 from six import iteritems
 
+from thriftworker.state import current_app
 
-# since each thread has its own greenlet we can just use those as identifiers
-# for the context.  If greenlets are not available we fall back to the
-# current thread ident.
-try:
-    from greenlet import getcurrent as get_ident
-except ImportError:
-    try:
-        from thread import get_ident
-    except ImportError:
-        from dummy_thread import get_ident
+
+def get_ident():
+    """Return current thread ident."""
+    return current_app.env.get_ident()
 
 
 def release_local(local):
@@ -52,7 +47,7 @@ class Local(object):
 
     def __init__(self):
         object.__setattr__(self, '__storage__', {})
-        object.__setattr__(self, '__ident_func__', get_ident)
+        object.__setattr__(self, '__ident_func__', current_app.env.get_ident)
 
     def __iter__(self):
         return iter(iteritems(self.__storage__))
@@ -164,6 +159,10 @@ class LocalStack(object):
             return self._local.stack[-1]
         except (AttributeError, IndexError):
             return None
+
+    def __iter__(self):
+        """Return all elements in storage."""
+        return iter(iteritems(dict(self._local)))
 
 
 class LocalProxy(object):

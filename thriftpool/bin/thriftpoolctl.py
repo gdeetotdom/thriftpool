@@ -8,8 +8,12 @@ from thriftworker.utils.decorators import cached_property
 
 from thriftpool.bin.base import BaseCommand
 from thriftpool.bin.thriftpoold import ManagerCommand
-from thriftpool.utils.text import indent
 from thriftpool.utils.mixin import SubclassMixin
+
+
+def indent(t, indent=0):
+    """Indent text."""
+    return '\n'.join(' ' * indent + p for p in t.split('\n'))
 
 
 class Formatter(argparse.HelpFormatter):

@@ -1,10 +1,53 @@
 from __future__ import absolute_import
 
+from six import StringIO
+
 from thriftpool.tests.utils import TestCase
-from thriftpool.utils.structures import AttributeDict, AggregatedView
+from thriftpool.utils.structures import AttributeDict, AggregatedView, \
+    DependencyGraph
 
 
-class test_AttributeDict(TestCase):
+class TestDependencyGraph(TestCase):
+
+    def graph1(self):
+        return DependencyGraph([
+            ('A', []),
+            ('B', []),
+            ('C', ['A']),
+            ('D', ['C', 'B']),
+        ])
+
+    def test_repr(self):
+        self.assertTrue(repr(self.graph1()))
+
+    def test_topsort(self):
+        order = self.graph1().topsort()
+        # C must start before D
+        self.assertLess(order.index('C'), order.index('D'))
+        # and B must start before D
+        self.assertLess(order.index('B'), order.index('D'))
+        # and A must start before C
+        self.assertLess(order.index('A'), order.index('C'))
+
+    def test_edges(self):
+        self.assertItemsEqual(
+            list(self.graph1().edges()),
+            ['C', 'D'],
+        )
+
+    def test_items(self):
+        self.assertDictEqual(
+            dict(self.graph1().items()),
+            {'A': [], 'B': [], 'C': ['A'], 'D': ['C', 'B']},
+        )
+
+    def test_to_dot(self):
+        s = StringIO()
+        self.graph1().to_dot(s)
+        self.assertTrue(s.getvalue())
+
+
+class TestAttributeDict(TestCase):
 
     def test_getattr__setattr(self):
         x = AttributeDict({'foo': 'bar'})
@@ -15,7 +58,7 @@ class test_AttributeDict(TestCase):
         self.assertEqual(x['bar'], 'foo')
 
 
-class test_ConfigurationView(TestCase):
+class TestConfigurationView(TestCase):
 
     def setUp(self):
         view = self.view = AggregatedView({'changed_key': 1, 'both': 2})

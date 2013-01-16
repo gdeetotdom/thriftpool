@@ -42,4 +42,5 @@ class TestCase(BaseTestCase):
         # reset current state before each run
         state.default_app = None
         app = self.app = state.get_current_app()
+        self.thriftworker = self.app.thriftworker
         self.custom_settings = partial(custom_settings, app)

@@ -39,7 +39,8 @@ class BaseHandler(CorsHandler):
         self._clients = clients
 
     def _execute(self, *args, **kwargs):
-        current_app.hub.spawn(super(BaseHandler, self)._execute, *args, **kwargs)
+        execute = super(BaseHandler, self)._execute
+        current_app.hub.spawn(execute, *args, **kwargs)
 
 
 class ClientsHandler(BaseHandler):
@@ -88,6 +89,15 @@ class TimerHandler(BaseClientHandler):
     def get_data(self, proxy):
         return {'{0}.{1}'.format(service, method): value
                 for (service, method), value in proxy.get_timers().items()}
+
+
+class StackHandler(BaseClientHandler):
+
+    def get_data(self, proxy):
+        return {ident: [{'method': '{0}.{1}'.format(service, method),
+                         'args': repr(args), 'kwargs': repr(kwargs)}
+                        for (service, method, args, kwargs) in l]
+                for ident, l in proxy.get_stack().items()}
 
 
 class RedirectStream(object):
@@ -246,6 +256,8 @@ class ProcessManager(LogsMixin, LoopMixin):
             (r'/timers/([0-9^/]+)', TimerHandler, options),
             (r'/counters', ClientsHandler, options),
             (r'/counters/([0-9^/]+)', CounterHandler, options),
+            (r'/stack', ClientsHandler, options),
+            (r'/stack/([0-9^/]+)', StackHandler, options),
         ]
         endpoints = self.app.config.TORNADO_ENDPOINTS
         if endpoints:

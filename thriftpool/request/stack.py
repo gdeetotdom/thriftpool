@@ -33,6 +33,12 @@ class RequestStack(object):
         """Return current request."""
         return self.stack.top
 
+    def to_dict(self):
+        return {ident: [(request.service_name, request.method.__name__,
+                         request.args, request.kwargs)
+                        for request in d.get('stack', [])]
+                for ident, d in self.stack}
+
     def __enter__(self):
         return self
 
