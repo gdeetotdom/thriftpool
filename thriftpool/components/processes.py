@@ -133,11 +133,12 @@ class ProcessManager(LogsMixin, LoopMixin):
     gevent_monkey = 'from gevent.monkey import patch_all; patch_all();'
     script = 'from thriftpool.bin.thriftworker import main; main();'
 
-    def __init__(self, app, listeners):
+    def __init__(self, app, listeners, controller):
         self.clients = Clients()
         self.serializers = StreamSerializer()
         self.app = app
         self.listeners = listeners
+        self.controller = controller
         self._bootstrapped = set()
         super(ProcessManager, self).__init__()
 
@@ -169,6 +170,10 @@ class ProcessManager(LogsMixin, LoopMixin):
         # Register acceptors in remote process.
         proxy.register_acceptors({i: listener.name
             for i, listener in iteritems(self.listeners.enumerated)})
+
+        for listener in self.listeners:
+            if listener.started:
+                proxy.start_acceptor(listener.name)
 
         # Notify about process initialization.
         self._bootstrapped.add(process.id)
@@ -217,7 +222,7 @@ class ProcessManager(LogsMixin, LoopMixin):
             self._info('Worker %d spawned with pid %d.',
                        msg['pid'], msg['os_pid'])
 
-        if evtype == 'spawn':
+        if evtype == 'spawn' and self.controller.is_running:
             # New process spawned, handle event.
             process = self.manager.get_process(msg['pid'])
             self._redirect_io(process)
@@ -302,5 +307,5 @@ class ProcessManagerComponent(StartStopComponent):
 
     def create(self, parent):
         processes = parent.processes = \
-            ProcessManager(parent.app, parent.listeners)
+            ProcessManager(parent.app, parent.listeners, parent)
         return processes
