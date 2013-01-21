@@ -72,9 +72,12 @@ class Watchdog(LoopMixin):
     @in_loop
     def start(self):
         self._pipe.start_read(self._on_event)
+        self._pipe.write('x')
 
+    @in_loop
     def stop(self):
-        pass
+        if not self._pipe.closed:
+            self._pipe.close()
 
 
 class WatchdogComponent(StartStopComponent):
