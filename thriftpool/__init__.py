@@ -10,7 +10,7 @@ __docformat__ = 'restructuredtext'
 
 # -eof meta-
 
-from thriftpool.app._state import current_app as thriftpool
+from thriftpool.app._state import current_app as thriftpool, as_default_cls
 from thriftpool.base import BaseHandler
 
-__all__ = ['thriftpool', 'BaseHandler']
+__all__ = ['thriftpool', 'BaseHandler', 'as_default_cls']

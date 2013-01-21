@@ -56,11 +56,12 @@ class Watchdog(LoopMixin):
         super(Watchdog, self).__init__()
 
     def _on_event(self, handle, data, error):
-        logger.error('Error %r happened on descriptor %d',
-                     strerror(error), self.descriptor)
-        self._pipe.close()
-        # notify us that we should stop
-        os.kill(os.getpid(), signal.SIGTERM)
+        if error:
+            logger.error('Error %r happened on descriptor %d',
+                         strerror(error), self.descriptor)
+            self._pipe.close()
+            # notify us that we should stop
+            os.kill(os.getpid(), signal.SIGTERM)
 
     @cached_property
     def _pipe(self):
@@ -72,11 +73,8 @@ class Watchdog(LoopMixin):
     def start(self):
         self._pipe.start_read(self._on_event)
 
-    @in_loop
     def stop(self):
-        pipe = self._pipe
-        if pipe.active and not pipe.closed:
-            pipe.stop_read()
+        pass
 
 
 class WatchdogComponent(StartStopComponent):
