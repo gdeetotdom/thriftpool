@@ -250,7 +250,8 @@ class ProcessManager(LogsMixin, LoopMixin):
                     custom_channels=self.listeners.channels,
                     env=dict(os.environ, IS_WORKER='1'),
                     numprocesses=config.WORKERS,
-                    redirect_input=True)
+                    redirect_input=True,
+                    graceful_timeout=STOP_TIMEOUT / 2)
 
     def _create_apps(self):
         """Create applications for gaffer."""
