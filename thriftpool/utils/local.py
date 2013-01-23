@@ -12,12 +12,12 @@ from __future__ import absolute_import
 
 from six import iteritems
 
-from thriftworker.state import current_app
+from thriftpool import thriftpool
 
 
 def get_ident():
     """Return current thread ident."""
-    return current_app.env.get_ident()
+    return thriftpool.env.get_ident()
 
 
 def release_local(local):
@@ -47,7 +47,7 @@ class Local(object):
 
     def __init__(self):
         object.__setattr__(self, '__storage__', {})
-        object.__setattr__(self, '__ident_func__', current_app.env.get_ident)
+        object.__setattr__(self, '__ident_func__', thriftpool.env.get_ident)
 
     def __iter__(self):
         return iter(iteritems(self.__storage__))

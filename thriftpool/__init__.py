@@ -1,6 +1,6 @@
 """Container for thrift services."""
 
-VERSION = (0, 1, 17)
+VERSION = (0, 1, 18)
 
 __version__ = '.'.join(map(str, VERSION[0:3]))
 __author__ = 'Lipin Dmitriy'
@@ -10,7 +10,7 @@ __docformat__ = 'restructuredtext'
 
 # -eof meta-
 
-from thriftpool.app._state import current_app as thriftpool
+from thriftpool.app._state import current_app as thriftpool, as_default_cls
 from thriftpool.base import BaseHandler
 
-__all__ = ['thriftpool', 'BaseHandler']
+__all__ = ['thriftpool', 'BaseHandler', 'as_default_cls']

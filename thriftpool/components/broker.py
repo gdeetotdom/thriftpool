@@ -67,10 +67,6 @@ class PerspectiveBroker(LogsMixin, LoopMixin):
         super(PerspectiveBroker, self).__init__()
 
     @cached_property
-    def handshake_stream(self):
-        return Stream(self.loop, self.controller.handshake_fd)
-
-    @cached_property
     def incoming_stream(self):
         return Stream(self.loop, self.controller.incoming_fd)
 
@@ -80,8 +76,7 @@ class PerspectiveBroker(LogsMixin, LoopMixin):
 
     @property
     def streams(self):
-        return [self.handshake_stream,
-                self.incoming_stream,
+        return [self.incoming_stream,
                 self.outgoing_stream]
 
     @cached_property
@@ -95,7 +90,6 @@ class PerspectiveBroker(LogsMixin, LoopMixin):
     def start(self):
         for stream in self.streams:
             stream.start()
-        self.handshake_stream.write('x')
         self.consumer.start()
 
     @in_loop
