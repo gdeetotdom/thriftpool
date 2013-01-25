@@ -139,8 +139,16 @@ class ProcessManager(LogsMixin, LoopMixin):
         self.app = app
         self.listeners = listeners
         self.controller = controller
-        self._bootstrapped = set()
+        # store process id and start time
+        self._bootstrapped = {}
         super(ProcessManager, self).__init__()
+
+    def __iter__(self):
+        return iter(self._bootstrapped)
+
+    def get_start_time(self, process_id):
+        """When process was registered?"""
+        return self._bootstrapped.get(process_id)
 
     @property
     def manager(self):
@@ -162,6 +170,12 @@ class ProcessManager(LogsMixin, LoopMixin):
     def _stderr(self):
         return RedirectStream(self.loop, sys.stderr)
 
+    @property
+    def initialized(self):
+        """All workers started or not?"""
+        state = self.manager.get_process(self.process_name)
+        return len(self._bootstrapped) >= state.numprocesses
+
     def _bootstrap_process(self, proxy, process):
         # Change name of process.
         name = self.name_template.format(process.id, self.app.config)
@@ -176,10 +190,9 @@ class ProcessManager(LogsMixin, LoopMixin):
                 proxy.start_acceptor(listener.name)
 
         # Notify about process initialization.
-        self._bootstrapped.add(process.id)
+        self._bootstrapped[process.id] = self.loop.now()
         self._info('Worker %d initialized.', process.id)
-        state = self.manager.get_process(self.process_name)
-        if len(self._bootstrapped) >= state.numprocesses:
+        if self.initialized:
             self._info('Workers initialization done.')
             self._is_started.set()
 
@@ -230,7 +243,7 @@ class ProcessManager(LogsMixin, LoopMixin):
 
         elif evtype == 'exit':
             # Process exited, handle event.
-            self._bootstrapped.remove(msg['pid'])
+            self._bootstrapped.pop(msg['pid'])
             self.clients.unregister(msg['pid'])
 
     def _create_proc_kwargs(self):
