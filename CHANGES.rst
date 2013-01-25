@@ -1,8 +1,13 @@
 Changelog
 =========
 
-0.1.17
+0.1.19
 ------
+
+- Add support for worker restarting after their ttl expired;
+
+0.1.17 - 0.1.18
+---------------
 
 - Ensure that acceptors started after workers crashed;
 

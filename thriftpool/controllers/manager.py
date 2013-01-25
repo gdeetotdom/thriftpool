@@ -15,7 +15,8 @@ class ManagerNamespace(Namespace):
     def modules(self):
         return ['thriftpool.components.loop',
                 'thriftpool.components.listeners',
-                'thriftpool.components.processes']
+                'thriftpool.components.processes',
+                'thriftpool.components.watcher']
 
 
 class ManagerController(Controller):
