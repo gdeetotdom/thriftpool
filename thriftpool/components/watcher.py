@@ -21,8 +21,8 @@ class Watcher(LogsMixin, LoopMixin):
     #: How often (in seconds) we should check for process lifetime?
     resolution = 1.0
 
-    #: Specify restart delay.
-    repeat_divider = 2
+    #: Minimum repeat delay.
+    repeat_delay = 60.0
 
     def __init__(self, app, processes):
         self.app = app
@@ -41,7 +41,7 @@ class Watcher(LogsMixin, LoopMixin):
             if ttl < lifetime:
                 self._info('Send SIGTERM to %d...', process_id)
                 self.app.gaffer_manager.send_signal(process_id, SIGTERM)
-                self._timer.repeat = ttl // self.repeat_divider
+                self._timer.repeat = self.repeat_delay
                 break
 
     @cached_property
@@ -52,7 +52,7 @@ class Watcher(LogsMixin, LoopMixin):
     def start(self):
         if self.app.config.WORKER_TTL is None:
             return
-        self._timer.start(self._loop_cb, self.resolution, self.resolution)
+        self._timer.start(self._loop_cb, self.repeat_delay, self.resolution)
 
     @in_loop
     def stop(self):
