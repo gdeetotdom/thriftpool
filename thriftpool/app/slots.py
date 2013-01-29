@@ -70,6 +70,22 @@ class Slot(namedtuple('Slot', 'name listener service')):
     def __hash__(self):
         return hash(self.__class__) ^ hash(self.name)
 
+    def start(self):
+        try:
+            initialize = self.service.handler.initialize
+        except AttributeError:
+            pass
+        else:
+            initialize()
+
+    def stop(self):
+        try:
+            finalize = self.service.handler.finalize
+        except AttributeError:
+            pass
+        else:
+            finalize()
+
 
 class Repository(set):
     """Store existed slots."""
