@@ -1,8 +1,13 @@
 Changelog
 =========
 
-0.1.19
+0.1.21
 ------
+
+- Add support for handlers start and stop;
+
+0.1.19 - 0.1.20
+---------------
 
 - Add support for worker restarting after their ttl expired;
 

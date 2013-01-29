@@ -226,9 +226,12 @@ class ProcessManager(LogsMixin, LoopMixin):
 
         if evtype == 'exit':
             # Log exit event.
-            log = msg['term_signal'] and self._critical or self._info
+            pid, term_signal, exit_status = \
+                msg['pid'], msg['term_signal'], msg['exit_status']
+            log = (exit_status != 0 or term_signal not in (0, 15)) \
+                and self._critical or self._info
             log('Worker %d exited with term signal %d and exit status %d.',
-                msg['pid'], msg['term_signal'], msg['exit_status'])
+                pid, term_signal, exit_status)
 
         elif evtype == 'spawn':
             # Log spawn event.
