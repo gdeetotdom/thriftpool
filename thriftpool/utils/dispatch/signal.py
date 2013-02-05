@@ -2,6 +2,7 @@
 """Signal class."""
 from __future__ import absolute_import
 
+import inspect
 import weakref
 from . import saferef
 
@@ -9,7 +10,7 @@ WEAKREF_TYPES = (weakref.ReferenceType, saferef.BoundMethodWeakref)
 
 
 def _make_id(target):  # pragma: no cover
-    if hasattr(target, 'im_func'):
+    if not inspect.isclass(type(target)) and hasattr(target, 'im_func'):
         return (id(target.im_self), id(target.im_func))
     return id(target)
 

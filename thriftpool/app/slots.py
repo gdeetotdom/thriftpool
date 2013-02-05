@@ -107,8 +107,11 @@ class Repository(set):
 
     def add(self, slot):
         """Add new slot to collection."""
-        self._names[slot.name] = slot
-        super(Repository, self).add(slot)
+        try:
+            self._names[slot.name]
+        except KeyError:
+            self._names[slot.name] = slot
+            super(Repository, self).add(slot)
 
     def __getitem__(self, name):
         """Get slot by name."""
