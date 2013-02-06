@@ -27,6 +27,10 @@ DEFAULT_SETTINGS = dict(
     WORKER_TTL=None,
     CONCURRENCY=1,
     TORNADO_ENDPOINTS=[],
+    #: How long we should wait for process initialization.
+    PROCESS_START_TIMEOUT=60.0,
+    #: How long we should wait for process termination.
+    PROCESS_STOP_TIMEOUT=60.0,
 )
 
 
