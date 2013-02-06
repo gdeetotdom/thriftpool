@@ -26,13 +26,6 @@ from .base import StartStopComponent
 logger = logging.getLogger(__name__)
 
 
-#: How long we should wait for process initialization.
-START_TIMEOUT = 60.0
-
-#: How long we should wait for process termination.
-STOP_TIMEOUT = 60.0
-
-
 class BaseHandler(CorsHandler):
 
     def initialize(self, clients):
@@ -267,7 +260,7 @@ class ProcessManager(LogsMixin, LoopMixin):
                     env=dict(os.environ, IS_WORKER='1'),
                     numprocesses=config.WORKERS,
                     redirect_input=True,
-                    graceful_timeout=STOP_TIMEOUT / 2)
+                    graceful_timeout=config.PROCESS_STOP_TIMEOUT)
 
     def _create_apps(self):
         """Create applications for gaffer."""
@@ -297,7 +290,7 @@ class ProcessManager(LogsMixin, LoopMixin):
 
     def start(self):
         self._setup()
-        self._is_started.wait(START_TIMEOUT)
+        self._is_started.wait(self.app.config.PROCESS_START_TIMEOUT)
         if not self._is_started.is_set():
             self._error('Timeout when starting processes.')
             self._teardown()
@@ -311,7 +304,7 @@ class ProcessManager(LogsMixin, LoopMixin):
 
     def stop(self):
         self._teardown()
-        self._is_stopped.wait(STOP_TIMEOUT)
+        self._is_stopped.wait(self.app.config.PROCESS_STOP_TIMEOUT * 2)
         if not self._is_stopped.is_set():
             self._error('Timeout when terminating processes.')
             raise SystemTerminate()
