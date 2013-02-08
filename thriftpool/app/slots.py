@@ -71,16 +71,18 @@ class Slot(namedtuple('Slot', 'name listener service')):
         return hash(self.__class__) ^ hash(self.name)
 
     def start(self):
+        handler = self.service.handler
         try:
-            initialize = self.service.handler.initialize
+            initialize = handler.initialize
         except AttributeError:
             pass
         else:
             initialize()
 
     def stop(self):
+        handler = self.service.handler
         try:
-            finalize = self.service.handler.finalize
+            finalize = handler.finalize
         except AttributeError:
             pass
         else:
@@ -107,10 +109,7 @@ class Repository(set):
 
     def add(self, slot):
         """Add new slot to collection."""
-        try:
-            self._names[slot.name]
-        except KeyError:
-            self._names[slot.name] = slot
+        if self._names.setdefault(slot.name, slot) is slot:
             super(Repository, self).add(slot)
 
     def __getitem__(self, name):
