@@ -202,6 +202,12 @@ class StartStopComponent(Component):
             return
         self.obj.start()
 
+    def abort(self):
+        if self.obj is None:
+            return
+        if hasattr(self.obj, 'abort'):
+            self.obj.abort()
+
     def stop(self):
         if self.obj is None:
             return

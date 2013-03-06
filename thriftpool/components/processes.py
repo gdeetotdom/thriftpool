@@ -134,6 +134,7 @@ class ProcessManager(LogsMixin, LoopMixin):
         self.controller = controller
         # store process id and start time
         self._bootstrapped = {}
+        self._aborted = False
         super(ProcessManager, self).__init__()
 
     def __iter__(self):
@@ -291,10 +292,15 @@ class ProcessManager(LogsMixin, LoopMixin):
     def start(self):
         self._setup()
         self._is_started.wait(self.app.config.PROCESS_START_TIMEOUT)
-        if not self._is_started.is_set():
-            self._error('Timeout when starting processes.')
+        if not self._is_started.is_set() or self._aborted:
+            if not self._aborted:
+                self._error('Timeout when starting processes.')
             self._teardown()
             raise SystemTerminate()
+
+    def abort(self):
+        self._aborted = True
+        self._is_started.set()
 
     @in_loop
     def _teardown(self):
