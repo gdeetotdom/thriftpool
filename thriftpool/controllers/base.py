@@ -42,6 +42,7 @@ class Controller(LogsMixin):
     Namespace = Namespace
 
     def __init__(self):
+        self._starting = []
         self._running = 0
         self._state = None
         self._finalize = Finalize(self, self.stop, exitpriority=1)
@@ -88,6 +89,7 @@ class Controller(LogsMixin):
             for component in self.components:
                 self._debug('Starting %s...', qualname(component))
                 if component is not None:
+                    self._starting.append(component)
                     component.start()
                 self._running += 1
                 self._debug('%s OK!', qualname(component))
@@ -100,6 +102,8 @@ class Controller(LogsMixin):
         except (KeyboardInterrupt, SystemExit):
             self._debug('Terminating from keyboard')
             self.stop()
+        finally:
+            self._starting = []
 
         self._debug('Whole controller started!')
 
@@ -118,6 +122,10 @@ class Controller(LogsMixin):
 
         if self._state != self.RUNNING or \
                 self._running != len(self.components):
+            # Call abort on starting components.
+            for component in self._starting[:]:
+                if hasattr(component, 'abort'):
+                    component.abort()
             # Not fully started, can safely exit.
             self._state = self.TERMINATED
             self._shutdown_complete.set()
