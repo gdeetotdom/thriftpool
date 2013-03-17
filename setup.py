@@ -65,23 +65,32 @@ entrypoints['console_scripts'] = [
 entrypoints['thriftpool.modules'] = []
 
 
-setup(name='thriftpool',
-      version=meta['VERSION'],
-      description=meta['doc'],
-      author=meta['author'],
-      author_email=meta['contact'],
-      url=meta['homepage'],
-      long_description=README + '\n\n' + CHANGES,
-      keywords='thrift soa',
-      license='BSD',
-      packages=find_packages(),
-      install_requires=[
-          'thrift>=0.8.0',
-          'pyuv>=0.8.3',
-          'gaffer>=0.5.0',
-          'six>=1.2.0',
-          'thriftworker>=0.2.0,<0.3.0',
-      ],
-      entry_points=entrypoints,
-      zip_safe=False
+setup(
+    name='thriftpool',
+    version=meta['VERSION'],
+    description=meta['doc'],
+    author=meta['author'],
+    author_email=meta['contact'],
+    url=meta['homepage'],
+    long_description=README + '\n\n' + CHANGES,
+    keywords='thrift soa',
+    license='BSD',
+    packages=find_packages(),
+    install_requires=[
+        'thrift>=0.8.0',
+        'pyuv>=0.8.3',
+        'gaffer>=0.5.0',
+        'six>=1.2.0',
+        'thriftworker>=0.2.0,<0.3.0',
+    ],
+    entry_points=entrypoints,
+    zip_safe=False,
+    classifiers=[
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
+        "Intended Audience :: System Administrators",
+        "License :: OSI Approved :: BSD License",
+        "Operating System :: POSIX",
+        "Programming Language :: Python :: 2.7",
+    ],
 )
