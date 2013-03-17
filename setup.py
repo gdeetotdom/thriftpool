@@ -75,8 +75,13 @@ setup(name='thriftpool',
       keywords='thrift soa',
       license='BSD',
       packages=find_packages(),
-      install_requires=['thrift', 'pyuv>=0.8.3', 'six',
-                        'gaffer>=0.4.4', 'thriftworker>=0.1.17'],
+      install_requires=[
+          'thrift>=0.8.0',
+          'pyuv>=0.8.3',
+          'gaffer>=0.5.0',
+          'six>=1.2.0',
+          'thriftworker>=0.1.17',
+      ],
       entry_points=entrypoints,
       zip_safe=False
 )
