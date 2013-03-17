@@ -80,7 +80,7 @@ setup(name='thriftpool',
           'pyuv>=0.8.3',
           'gaffer>=0.5.0',
           'six>=1.2.0',
-          'thriftworker>=0.1.17',
+          'thriftworker>=0.2.0,<0.3.0',
       ],
       entry_points=entrypoints,
       zip_safe=False

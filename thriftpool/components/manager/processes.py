@@ -195,6 +195,7 @@ class Aborted(Exception):
     """Waiting was aborted."""
 
 
+
 class Waiter(object):
     """Waiter primitive."""
 
@@ -306,7 +307,7 @@ class ProcessManager(ManagerMixin, LoopMixin):
             self.ready_cb()
 
     def teardown_cb(self, pid):
-        self._bootstrapped.pop(pid)
+        self._bootstrapped.pop(pid, None)
 
     def ready_cb(self, *args):
         logger.info('Workers initialization done.')
