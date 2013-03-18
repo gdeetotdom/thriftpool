@@ -6,23 +6,15 @@ import json
 from .base import BaseHandler
 
 
-class ClientMixin(object):
-
-    _clients = {}
-
-    def initialize(self, clients):
-        self._clients = clients
-
-
-class ClientListHandler(ClientMixin, BaseHandler):
+class ClientsHandler(BaseHandler):
 
     def get(self):
         self.preflight()
         self.set_status(200)
-        self.write(json.dumps(self._clients.keys()))
+        self.write(json.dumps(self.processes.broker.keys()))
 
 
-class SpecificClientHandler(ClientMixin, BaseHandler):
+class SpecificClientHandler(BaseHandler):
     """Abstract client handler."""
 
     def get_data(self, proxy):
@@ -38,13 +30,13 @@ class SpecificClientHandler(ClientMixin, BaseHandler):
             self.write({"error": "bad_value"})
             return
 
-        if pid in self._clients:
+        if pid in self.processes.broker:
             self.set_status(200)
         else:
             self.set_status(404)
             return
 
-        client = self._clients[pid]
+        client = self.processes.broker[pid]
         data = client.spawn(self.get_data).get()
         self.write(json.dumps(data))
 

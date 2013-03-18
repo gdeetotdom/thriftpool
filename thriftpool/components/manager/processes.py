@@ -9,12 +9,12 @@ from gaffer.process import ProcessConfig
 from pyuv import Pipe
 from six import iteritems
 
-from thriftworker.utils.loop import in_loop
+from thriftworker.utils.loop import in_loop, loop_delegate
 from thriftworker.utils.decorators import cached_property
 from thriftworker.utils.mixin import LoopMixin
 
-from thriftpool.exceptions import SystemTerminate
 from thriftpool.components.base import StartStopComponent
+from thriftpool.components.utils import Waiter
 from thriftpool.rpc.broker import Broker
 from thriftpool.utils.serializers import StreamSerializer
 
@@ -191,60 +191,6 @@ class ProcessFactory(ManagerMixin, LoopMixin):
         self.manager.unload(self.job_name, sessionid=self.session_name)
 
 
-class Aborted(Exception):
-    """Waiting was aborted."""
-
-
-
-class Waiter(object):
-    """Waiter primitive."""
-
-    def __init__(self, app, timeout=None):
-        self.app = app
-        self.timeout = timeout or 30
-        self._aborted = False
-        super(Waiter, self).__init__()
-
-    @cached_property
-    def _event(self):
-        return self.app.env.RealEvent()
-
-    def reset(self):
-        """Reset waiter state."""
-        self._aborted = False
-        self._event.clear()
-
-    def abort(self):
-        """Abort initialization."""
-        self._aborted = True
-        self._event.set()
-
-    def done(self):
-        """Notify all that initialization done."""
-        self._event.set()
-
-    def wait(self):
-        """Wait for initialization."""
-        event = self._event
-        try:
-            event.wait(self.timeout)
-            if self._aborted:
-                raise Aborted('Waiter was aborted!')
-            return event.is_set()
-        finally:
-            self.reset()
-
-    def wait_or_terminate(self, msg=None):
-        """Generate `SystemTerminate` in case of timeout or aborting."""
-        try:
-            if not self.wait():
-                logger.error(msg or 'Timeout in waiter happened.')
-                raise SystemTerminate()
-        except Aborted:
-            logger.info('Waiter aborted.')
-            raise SystemTerminate()
-
-
 class ProcessManager(ManagerMixin, LoopMixin):
     """Start and manage workers."""
 
@@ -267,12 +213,9 @@ class ProcessManager(ManagerMixin, LoopMixin):
             setup_callback=self.setup_cb, teardown_callback=self.teardown_cb)
 
         self._bootstrapped = {}
-        self._aborted = False
 
-        self._start_waiter = Waiter(self.app,
+        self._start_waiter = Waiter(
             timeout=self.app.config.PROCESS_START_TIMEOUT)
-        self._stop_waiter = Waiter(self.app,
-            timeout=self.app.config.PROCESS_STOP_TIMEOUT * 2)
 
         super(ProcessManager, self).__init__()
 
@@ -307,45 +250,34 @@ class ProcessManager(ManagerMixin, LoopMixin):
             self.ready_cb()
 
     def teardown_cb(self, pid):
-        self._bootstrapped.pop(pid, None)
+        self._bootstrapped.pop(pid)
 
     def ready_cb(self, *args):
         logger.info('Workers initialization done.')
         self._start_waiter.done()
 
-    def stop_cb(self, *args):
-        logger.info('Workers stopped.')
-        self._stop_waiter.done()
-
-    @in_loop
-    def setup(self):
-        self.app.gaffer_manager.start()
-        self.factory.setup(self.listeners.channels)
-
-    @in_loop
-    def teardown(self):
-        self.factory.teardown()
-        self.app.gaffer_manager.stop(callback=self.stop_cb)
-
     def start(self):
-        self.setup()
+
+        @loop_delegate
+        def async_start():
+            self.factory.setup(self.listeners.channels)
+
+        async_start()
         self._start_waiter.wait_or_terminate(
             'Timeout happened when starting processes.')
 
+    @in_loop
     def stop(self):
-        self.teardown()
-        self._stop_waiter.wait_or_terminate(
-            'Timeout happened when starting processes.')
+        self.factory.teardown()
 
     def abort(self):
         self._start_waiter.abort()
-        self._stop_waiter.abort()
 
 
 class ProcessManagerComponent(StartStopComponent):
 
     name = 'manager.processes'
-    requires = ('loop', 'listeners')
+    requires = ('loop', 'gaffer', 'listeners')
 
     def create(self, parent):
         processes = parent.processes = \

@@ -24,6 +24,10 @@ CORS_HEADERS = {
 
 class BaseHandler(RequestHandler):
 
+    @property
+    def processes(self):
+        return self.settings.get('processes')
+
     @asynchronous
     def options(self, *args, **kwargs):
         self.preflight()
