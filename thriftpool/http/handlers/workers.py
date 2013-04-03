@@ -45,16 +45,21 @@ class CounterHandler(SpecificClientHandler):
     """Provide information about counters."""
 
     def get_data(self, proxy):
-        return {'{0}.{1}'.format(service, method): value
-                for (service, method), value in proxy.get_counters().items()}
+        return proxy.get_counters()
 
 
 class TimerHandler(SpecificClientHandler):
     """Provide information about timers."""
 
     def get_data(self, proxy):
-        return {'{0}.{1}'.format(service, method): value
-                for (service, method), value in proxy.get_timers().items()}
+        return proxy.get_timers()
+
+
+class TimeoutHandler(SpecificClientHandler):
+    """Provide information about timeouts."""
+
+    def get_data(self, proxy):
+        return proxy.get_timeouts()
 
 
 class StackHandler(SpecificClientHandler):

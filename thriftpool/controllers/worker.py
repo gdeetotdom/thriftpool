@@ -81,3 +81,7 @@ class WorkerController(Controller):
     def get_timers(self):
         """Return timers here."""
         return self.app.thriftworker.timers.to_dict()
+
+    def get_timeouts(self):
+        """Return timeouts here."""
+        return self.app.thriftworker.timeouts.to_dict()

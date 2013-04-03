@@ -28,6 +28,8 @@ DEFAULT_HANDLERS = [
         (r'/version', handlers.VersionHandler),
         (r'/timers', handlers.ClientsHandler),
         (r'/timers/([0-9^/]+)', handlers.TimerHandler),
+        (r'/timeouts', handlers.ClientsHandler),
+        (r'/timeouts/([0-9^/]+)', handlers.TimeoutHandler),
         (r'/counters', handlers.ClientsHandler),
         (r'/counters/([0-9^/]+)', handlers.CounterHandler),
         (r'/stack', handlers.ClientsHandler),
