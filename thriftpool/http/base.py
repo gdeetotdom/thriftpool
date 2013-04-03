@@ -99,7 +99,7 @@ class HttpHandler(object):
 
     def __init__(self, endpoints=None, handlers=None, **settings):
         self.endpoints = endpoints or []
-        if not endpoints:  # if no endpoints passed add a default
+        if endpoints is None:  # if no endpoints passed add a default
             self.endpoints.append(HttpEndpoint())
 
         # set http handlers
