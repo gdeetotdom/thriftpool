@@ -8,16 +8,17 @@ from .transport import Producer
 from .client import Client
 
 
-class Clients(object):
-    """Manage clients."""
+class Broker(object):
+    """Used to pass commands to all known slaves."""
 
     Producer = Producer
     Client = Client
 
-    def __init__(self):
+    def __init__(self, app):
+        self.app = app
         self._producers = {}
         self._clients = {}
-        super(Clients, self).__init__()
+        super(Broker, self).__init__()
 
     def __iter__(self):
         return iter(self._clients)
@@ -35,10 +36,10 @@ class Clients(object):
         """Create new producer for given process."""
         incoming = process.streams['incoming']
         outgoing = process.streams['outgoing']
-        producer = self._producers[process.id] = \
-            self.Producer(current_app.loop, incoming, outgoing)
+        producer = self._producers[process.pid] = \
+            self.Producer(self.app.loop, incoming, outgoing)
         producer.start()
-        client = self._clients[process.id] = self.Client(producer)
+        client = self._clients[process.pid] = self.Client(self.app, producer)
         if callback is not None:
             client.spawn(callback, process=process, **kwargs)
 

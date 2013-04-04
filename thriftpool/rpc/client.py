@@ -4,18 +4,18 @@ from functools import partial
 
 from thriftworker.utils.loop import in_loop
 
-from thriftpool.app import current_app
-
 
 class Proxy(object):
     """Proxy object that execute functions on other side."""
 
-    def __init__(self, producer):
-        self.__producer = producer
+    def __init__(self, app, producer):
+        self._app = app
+        self._producer = producer
 
     def __getattr__(self, name):
         """Create inner function that should enqueue remote procedure call."""
-        producer = self.__producer
+        producer = self._producer
+        app = self._app
 
         def execute_callback(waiter, obj):
             if isinstance(obj, Exception):
@@ -24,7 +24,7 @@ class Proxy(object):
                 waiter.switch(obj)
 
         def inner_function(*args, **kwargs):
-            waiter = current_app.hub.Waiter()
+            waiter = app.hub.Waiter()
             producer.apply(name, callback=partial(execute_callback, waiter),
                            args=args, kwargs=kwargs)
             return waiter.get()
@@ -35,12 +35,13 @@ class Proxy(object):
 
 
 class Client(object):
-    """Client to """
+    """Provide simple interface to pass commands to slaves."""
 
     Proxy = Proxy
 
-    def __init__(self, producer):
-        self.__proxy = self.Proxy(producer)
+    def __init__(self, app, producer):
+        self.app = app
+        self.proxy = self.Proxy(self.app, producer)
 
     @in_loop
     def spawn(self, run, **kwargs):
@@ -49,5 +50,5 @@ class Client(object):
 
         """
         assert callable(run), 'given object not callable'
-        kwargs.setdefault('proxy', self.__proxy)
-        return current_app.hub.spawn(run, **kwargs)
+        kwargs['proxy'] = self.proxy
+        return self.app.hub.spawn(run, **kwargs)

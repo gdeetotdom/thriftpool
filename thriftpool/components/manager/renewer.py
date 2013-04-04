@@ -1,3 +1,4 @@
+"""Periodically restart workers."""
 from __future__ import absolute_import
 
 import logging
@@ -10,13 +11,12 @@ from thriftworker.utils.mixin import LoopMixin
 from thriftworker.utils.decorators import cached_property
 
 from thriftpool.utils.mixin import LogsMixin
-
-from .base import StartStopComponent
+from thriftpool.components.base import StartStopComponent
 
 logger = logging.getLogger(__name__)
 
 
-class Watcher(LogsMixin, LoopMixin):
+class Renewer(LogsMixin, LoopMixin):
 
     #: How often (in seconds) we should check for process lifetime?
     resolution = 1.0
@@ -27,10 +27,10 @@ class Watcher(LogsMixin, LoopMixin):
     def __init__(self, app, processes):
         self.app = app
         self.processes = processes
-        super(Watcher, self).__init__()
+        super(Renewer, self).__init__()
 
     def _loop_cb(self, handle):
-        if not self.processes.initialized:
+        if not self.processes.is_ready():
             return
         self._timer.repeat = self.resolution
         processes = self.processes
@@ -40,7 +40,7 @@ class Watcher(LogsMixin, LoopMixin):
             lifetime = (now - processes.get_start_time(process_id)) // 1000
             if ttl < lifetime:
                 self._info('Send SIGTERM to %d...', process_id)
-                self.app.gaffer_manager.send_signal(process_id, SIGTERM)
+                self.app.gaffer_manager.kill(process_id, SIGTERM)
                 self._timer.repeat = self.repeat_delay
                 break
 
@@ -60,10 +60,10 @@ class Watcher(LogsMixin, LoopMixin):
             self._timer.close()
 
 
-class WatcherComponent(StartStopComponent):
+class RenewerComponent(StartStopComponent):
 
-    name = 'manager.watcher'
-    requires = ('loop', 'process_manager')
+    name = 'manager.renewer'
+    requires = ('loop', 'processes')
 
     def create(self, parent):
-        return Watcher(parent.app, parent.processes)
+        return Renewer(parent.app, parent.processes)
