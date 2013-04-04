@@ -3,5 +3,5 @@ thrift
 setproctitle
 psutil
 six
-gaffer
+https://github.com/benoitc/gaffer/archive/master.zip#egg=gaffer
 greenlet
