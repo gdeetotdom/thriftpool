@@ -5,6 +5,7 @@ import logging
 from signal import SIGTERM
 
 from pyuv import Timer
+from gaffer.error import ProcessNotFound
 
 from thriftworker.utils.loop import in_loop
 from thriftworker.utils.mixin import LoopMixin
@@ -40,7 +41,10 @@ class Renewer(LogsMixin, LoopMixin):
             lifetime = (now - processes.get_start_time(process_id)) // 1000
             if ttl < lifetime:
                 self._info('Send SIGTERM to %d...', process_id)
-                self.app.gaffer_manager.kill(process_id, SIGTERM)
+                try:
+                    self.app.gaffer_manager.kill(process_id, SIGTERM)
+                except ProcessNotFound:
+                    pass
                 self._timer.repeat = self.repeat_delay
                 break
 
