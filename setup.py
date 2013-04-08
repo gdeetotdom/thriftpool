@@ -79,7 +79,7 @@ setup(
     install_requires=[
         'thrift>=0.8.0',
         'pyuv>=0.8.3',
-        'gaffer>=0.5.0',
+        'gaffer',
         'six>=1.2.0',
         'thriftworker>=0.2.0,<0.3.0',
     ],
