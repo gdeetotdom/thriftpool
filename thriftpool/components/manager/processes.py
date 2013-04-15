@@ -219,16 +219,27 @@ class ProcessManager(ManagerMixin, LoopMixin):
 
         super(ProcessManager, self).__init__()
 
+    def __len__(self):
+        return len(self._bootstrapped)
+
     def __iter__(self):
         return iter(self._bootstrapped)
 
-    def get_start_time(self, process_id):
-        """When process was registered?"""
+    def __getitem__(self, process_id):
+        """Return registered process."""
         return self._bootstrapped.get(process_id)
+
+    def eliminate(self, process_id):
+        """Unregister and stop process."""
+        process = self[process_id]
+        if process is None:
+            return
+        self.broker.unregister(process_id)
+        process.stop()
 
     def is_ready(self):
         """Are all workers started or not?"""
-        return len(self._bootstrapped) >= self.app.config.WORKERS
+        return len(self) >= self.app.config.WORKERS
 
     def setup_cb(self, proxy, process):
         # Change name of process.
@@ -243,8 +254,11 @@ class ProcessManager(ManagerMixin, LoopMixin):
             if listener.started:
                 proxy.start_acceptor(listener.name)
 
+        # Set startup time for process.
+        process.startup_time = self.loop.now()
+
         # Notify about process initialization.
-        self._bootstrapped[process.pid] = self.loop.now()
+        self._bootstrapped[process.pid] = process
         logger.info('Worker %d initialized.', process.pid)
         if self.is_ready():
             self.ready_cb()

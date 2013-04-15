@@ -81,7 +81,7 @@ setup(
         'pyuv>=0.10.0',
         'gaffer',
         'six>=1.2.0',
-        'thriftworker>=0.2.4,<0.3.0',
+        'thriftworker>=0.2.6,<0.3.0',
     ],
     entry_points=entrypoints,
     zip_safe=False,

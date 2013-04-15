@@ -25,6 +25,7 @@ DEFAULT_SETTINGS = dict(
     WORKER_TYPE='sync',
     WORKERS=1,
     WORKER_TTL=None,
+    WORKER_REAP_DELAY=60.0,
     CONCURRENCY=1,
     TORNADO_ENDPOINTS=[],
     #: How long we should wait for process initialization.

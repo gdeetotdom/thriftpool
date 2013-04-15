@@ -197,10 +197,12 @@ class Consumer(Transport):
 class Producer(Transport):
     """Push commands to consumer."""
 
-    def __init__(self, loop, incoming, outgoing):
+    def __init__(self, loop, incoming, outgoing, process):
         super(Producer, self).__init__(loop, incoming, outgoing)
+        self.process = process
 
     @in_loop
     def apply(self, method_name, callback=None, args=None, kwargs=None):
         """Enqueue new remote procedure call."""
+        assert self.process.active, 'process not active'
         self.write((str(method_name), args or [], kwargs or {}), callback)
