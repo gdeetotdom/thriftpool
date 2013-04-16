@@ -2,6 +2,8 @@ from __future__ import absolute_import
 
 import signal as _signal
 
+import pyuv
+
 from six import iteritems, string_types
 
 __all__ = ['signals']
@@ -10,14 +12,12 @@ __all__ = ['signals']
 class Signals(object):
     """Convenience interface to :mod:`signals`.
 
-    If the requested signal is not supported on the current platform,
-    the operation will be ignored.
-
     **Examples**:
 
     .. code-block:: python
 
-        >>> from celery.platforms import signals
+        >>> from . import signals
+        >>> signals = Signals()
 
         >>> signals['INT'] = my_handler
 
@@ -30,22 +30,14 @@ class Signals(object):
         >>> signals.signum('INT')
         2
 
-        >>> signals.ignore('USR1')
-        >>> signals['USR1'] == signals.ignored
-        True
-
-        >>> signals.reset('USR1')
-        >>> signals['USR1'] == signals.default
-        True
-
-        >>> signals.update(INT=exit_handler,
-        ...                TERM=exit_handler,
-        ...                HUP=hup_handler)
-
     """
 
-    ignored = _signal.SIG_IGN
-    default = _signal.SIG_DFL
+    def __init__(self):
+        self._loop = pyuv.Loop.default_loop()
+        self._signal_handlers = []
+        self._registered_signals = {}
+        self._guard = None
+        self._flag = False
 
     def supported(self, signal_name):
         """Returns true value if ``signal_name`` exists on this platform."""
@@ -65,42 +57,59 @@ class Signals(object):
             signal_name = 'SIG' + signal_name
         return getattr(_signal, signal_name)
 
-    def reset(self, *signal_names):
-        """Reset signals to the default signal handler.
-
-        Does nothing if the platform doesn't support signals,
-        or the specified signal in particular.
-
-        """
-        self.update((sig, self.default) for sig in signal_names)
-
-    def ignore(self, *signal_names):
-        """Ignore signal using :const:`SIG_IGN`.
-
-        Does nothing if the platform doesn't support signals,
-        or the specified signal in particular.
-
-        """
-        self.update((sig, self.ignored) for sig in signal_names)
-
     def __getitem__(self, signal_name):
-        return _signal.getsignal(self.signum(signal_name))
+        return self._registered_signals[self.signum(signal_name)]
 
     def __setitem__(self, signal_name, handler):
-        """Install signal handler.
-
-        Does nothing if the current platform doesn't support signals,
-        or the specified signal in particular.
-
-        """
-        try:
-            _signal.signal(self.signum(signal_name), handler)
-        except (AttributeError, ValueError):
-            pass
+        """Install signal handler."""
+        self._registered_signals[self.signum(signal_name)] = handler
 
     def update(self, _d_=None, **sigmap):
         """Set signal handlers from a mapping."""
         for signal_name, handler in iteritems(dict(_d_ or {}, **sigmap)):
             self[signal_name] = handler
 
-signals = Signals()
+    def _on_signal(self, handle, signum):
+        try:
+            callback = self._registered_signals[signum]
+        except KeyError:
+            pass
+        else:
+            callback(signum, self)
+
+    def _start_signal(self, callback, signum):
+        h = pyuv.Signal(self._loop)
+        h.start(callback, signum)
+        h.unref()
+        self._signal_handlers.append(h)
+
+    def start(self):
+        # quit signals handling
+        for signum in self._registered_signals:
+            self._start_signal(self._on_signal, signum)
+
+    def stop(self):
+        signal_handlers, self._signal_handlers = self._signal_handlers, []
+        for handle in signal_handlers:
+            try:
+                handle.stop()
+            except pyuv.error.HandleError:
+                pass
+
+    def wait(self):
+        """Wait for signal or until set call."""
+        if self._flag:
+            return
+        self.start()
+        self._guard = pyuv.Async(self._loop, lambda h: None)
+        try:
+            self._loop.run()
+        finally:
+            self.stop()
+
+    def set(self):
+        """Exit from loop."""
+        self._flag = True
+        if self._guard is None:
+            return
+        self._guard.close()

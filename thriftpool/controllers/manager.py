@@ -19,7 +19,7 @@ class ManagerNamespace(Namespace):
             'thriftpool.components.manager.listeners',
             'thriftpool.components.manager.processes',
             'thriftpool.components.manager.acceptors',
-            'thriftpool.components.manager.renewer',
+            'thriftpool.components.manager.reaper',
             'thriftpool.components.manager.tornado',
         ]
 

@@ -27,9 +27,9 @@ DEFAULT_HANDLERS = [
         (r'/ping', handlers.PingHandler),
         (r'/version', handlers.VersionHandler),
         (r'/timers', handlers.ClientsHandler),
-        (r'/timers/([0-9^/]+)', handlers.TimerHandler),
-        (r'/timeouts', handlers.ClientsHandler),
-        (r'/timeouts/([0-9^/]+)', handlers.TimeoutHandler),
+        (r'/timers/execution/([0-9^/]+)', handlers.ExecutionTimerHandler),
+        (r'/timers/dispatching/([0-9^/]+)', handlers.DispatchingTimerHandler),
+        (r'/timers/timeouts/([0-9^/]+)', handlers.TimeoutHandler),
         (r'/counters', handlers.ClientsHandler),
         (r'/counters/([0-9^/]+)', handlers.CounterHandler),
         (r'/stack', handlers.ClientsHandler),
@@ -89,7 +89,7 @@ class HttpEndpoint(object):
 
     def stop(self):
         self.server.stop()
-        self.io_loop.close(True)
+        self.io_loop.close()
 
     def restart(self):
         self.server.stop()

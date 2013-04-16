@@ -48,11 +48,18 @@ class CounterHandler(SpecificClientHandler):
         return proxy.get_counters()
 
 
-class TimerHandler(SpecificClientHandler):
-    """Provide information about timers."""
+class DispatchingTimerHandler(SpecificClientHandler):
+    """Provide information about dispatching timers."""
 
     def get_data(self, proxy):
-        return proxy.get_timers()
+        return proxy.get_dispatching_timers()
+
+
+class ExecutionTimerHandler(SpecificClientHandler):
+    """Provide information about execution timers."""
+
+    def get_data(self, proxy):
+        return proxy.get_execution_timers()
 
 
 class TimeoutHandler(SpecificClientHandler):

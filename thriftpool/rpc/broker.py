@@ -2,8 +2,6 @@ from __future__ import absolute_import
 
 from thriftworker.utils.loop import in_loop
 
-from thriftpool.app import current_app
-
 from .transport import Producer
 from .client import Client
 
@@ -37,7 +35,7 @@ class Broker(object):
         incoming = process.streams['incoming']
         outgoing = process.streams['outgoing']
         producer = self._producers[process.pid] = \
-            self.Producer(self.app.loop, incoming, outgoing)
+            self.Producer(self.app.loop, incoming, outgoing, process)
         producer.start()
         client = self._clients[process.pid] = self.Client(self.app, producer)
         if callback is not None:
