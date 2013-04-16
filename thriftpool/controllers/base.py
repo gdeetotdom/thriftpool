@@ -100,11 +100,10 @@ class Controller(LogsMixin):
         finally:
             self._starting = []
 
-        self._debug('Whole controller started!')
-
+        self._info('Controller %r started!', self)
         self.after_start()
-
         self._signals.wait()
+        self._info('Controller %r stopped!', self)
 
     def _shutdown(self, warm=True):
         what = 'Stopping' if warm else 'Terminating'
@@ -148,10 +147,10 @@ class Controller(LogsMixin):
 
     def stop(self):
         """Graceful shutdown of the worker server."""
-        self._info('Try to stop controller!')
+        self._debug('Try to stop controller!')
         self._shutdown(warm=True)
 
     def terminate(self):
         """Not so graceful shutdown of the worker server."""
-        self._info('Try to terminate controller!')
+        self._debug('Try to terminate controller!')
         self._shutdown(warm=False)
