@@ -14,12 +14,12 @@ from logging import getLogger
 
 from thriftworker.utils.imports import qualname
 from thriftworker.utils.finalize import Finalize
+from thriftworker.utils.decorators import cached_property
 
 from thriftpool.components.base import Namespace
 from thriftpool.exceptions import SystemTerminate
 from thriftpool.utils.mixin import LogsMixin
 from thriftpool.utils.signals import Signals
-from deployer.utils.decorators import cached_property
 
 __all__ = ['Controller']
 
