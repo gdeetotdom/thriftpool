@@ -197,11 +197,11 @@ class Daemon(object):
             os.dup2(dest, fd)
 
     def _detach(self):
-        if os.fork() == 0:      # first child
-            os.setsid()         # create new session
-            if os.fork() > 0:   # second child
-                os._exit(0)
-        else:
+        if os.fork():
+            os._exit(0)
+        os.setsid()
+
+        if os.fork():
             os._exit(0)
         return self
 

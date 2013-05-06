@@ -20,7 +20,7 @@ class ManagerCommand(BaseCommand):
         Option('-w', '--workers', help='Set workers count',
                action='store', type=int),
         Option('-k', '--worker-type', help='Set type of worker',
-               action='store', type=str, choices=['sync', 'gevent']),
+               action='store', type=str, choices=['sync']),
         Option('-l', '--log-level',
                help='Logging level', choices=LEVELS,
                action='store', default='INFO'),

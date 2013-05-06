@@ -19,6 +19,7 @@ from thriftpool.components.base import Namespace
 from thriftpool.exceptions import SystemTerminate
 from thriftpool.utils.mixin import LogsMixin
 from thriftpool.utils.signals import Signals
+from deployer.utils.decorators import cached_property
 
 __all__ = ['Controller']
 
@@ -44,11 +45,14 @@ class Controller(LogsMixin):
         self._running = 0
         self._state = None
         self._finalize = Finalize(self, self.stop, exitpriority=1)
-        self._signals = Signals()
         self.ident = uuid.uuid4()
         self.on_before_init()
         self.components = []
         self.namespace = self.Namespace(app=self.app).apply(self)
+
+    @cached_property
+    def _signals(self):
+        return Signals()
 
     def register_signal_handler(self):
         self._debug('Register signal handlers')

@@ -12,12 +12,16 @@ from __future__ import absolute_import
 
 from six import iteritems
 
-from thriftpool import thriftpool
-
-
-def get_ident():
-    """Return current thread ident."""
-    return thriftpool.env.get_ident()
+# since each thread has its own greenlet we can just use those as identifiers
+# for the context.  If greenlets are not available we fall back to the
+# current thread ident.
+try:
+    from greenlet import getcurrent as get_ident
+except ImportError: # pragma: no cover
+    try:
+        from thread import get_ident
+    except ImportError: # pragma: no cover
+        from dummy_thread import get_ident
 
 
 def release_local(local):
@@ -47,7 +51,7 @@ class Local(object):
 
     def __init__(self):
         object.__setattr__(self, '__storage__', {})
-        object.__setattr__(self, '__ident_func__', thriftpool.env.get_ident)
+        object.__setattr__(self, '__ident_func__', get_ident)
 
     def __iter__(self):
         return iter(iteritems(self.__storage__))

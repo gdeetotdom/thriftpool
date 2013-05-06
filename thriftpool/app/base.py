@@ -138,10 +138,6 @@ class ThriftPool(SubclassMixin):
     def hub(self):
         return self.thriftworker.hub
 
-    @property
-    def env(self):
-        return self.thriftworker.env
-
     @cached_property
     def gaffer_manager(self):
         """Create process manager."""
