@@ -69,9 +69,6 @@ class ProcessFactory(ManagerMixin, LoopMixin):
     #: specify worker initialization string
     initialize_script = 'from thriftpool.bin.thriftworker import main; main();'
 
-    #: custom string for gevent monkey patching
-    gevent_monkey_script = 'from gevent.monkey import patch_all; patch_all();'
-
     def __init__(self, app, broker, setup_callback=None, teardown_callback=None):
         self.app = app
         self.broker = broker
@@ -84,10 +81,7 @@ class ProcessFactory(ManagerMixin, LoopMixin):
     def command(self):
         """Python command to start worker."""
         worker_type = self.app.config.WORKER_TYPE
-        if worker_type == 'gevent':
-            return '{0} {1}'.format(self.gevent_monkey_script,
-                                    self.initialize_script)
-        elif worker_type == 'sync':
+        if worker_type == 'sync':
             return self.initialize_script
         else:
             raise NotImplementedError('unknown worker type {0!r}'.format(worker_type))

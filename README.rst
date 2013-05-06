@@ -13,7 +13,6 @@ Key features:
 
 * Pre-fork worker model;
 * Fast request processing (~3500 rps);
-* Compatibility with gevent through monkey patching;
 * Support request logging.
 
 Code of project based on `Celery`_.
