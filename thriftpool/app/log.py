@@ -7,7 +7,7 @@ import sys
 import os
 
 from thriftpool.signals import setup_logging, after_logging_setup
-from thriftpool.utils.logs import ColorFormatter, LoggingProxy
+from thriftpool.utils.logs import ColorFormatter
 from thriftpool.utils.term import colored, isatty
 from thriftpool.utils.debug import RequestLogger
 
@@ -31,22 +31,6 @@ class Logging(object):
         self.colored = colored(enabled=colorized)
         self.request_logger = None
         self.tornado_logger = None
-
-    def redirect_stdouts_to_logger(self, logger, loglevel=None, stdout=True,
-                                   stderr=True):
-        """Redirect :class:`sys.stdout` and :class:`sys.stderr` to a
-        logging instance.
-
-        :param logger: The :class:`logging.Logger` instance to redirect to.
-        :param loglevel: The loglevel redirected messages will be logged as.
-
-        """
-        proxy = LoggingProxy(logger, loglevel)
-        if stdout:
-            sys.stdout = proxy
-        if stderr:
-            sys.stderr = proxy
-        return proxy
 
     def get_handler(self, logfile=None):
         """Create log handler with either a filename, an open stream
