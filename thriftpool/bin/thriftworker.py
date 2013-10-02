@@ -6,6 +6,22 @@ from thriftpool.bin.base import BaseCommand
 from thriftpool.utils.serializers import StreamSerializer
 
 
+class Unbuffered(object):
+
+   def __init__(self, stream):
+       self.stream = stream
+
+   def write(self, data):
+       self.stream.write(data)
+       self.stream.flush()
+
+   def __getattr__(self, attr):
+       return getattr(self.stream, attr)
+
+   def __repr__(self):
+       return repr(self.stream)
+
+
 class WorkerCommand(BaseCommand):
     """Start ThiftPool worker."""
 
@@ -17,6 +33,8 @@ class WorkerCommand(BaseCommand):
 
 
 def main():
+    sys.stdout = Unbuffered(sys.stdout)
+    sys.stderr = Unbuffered(sys.stderr)
     WorkerCommand().execute()
 
 
