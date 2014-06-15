@@ -70,6 +70,10 @@ class Loader(object):
         """Called after controller shutdown."""
         signals.app_shutdown.send(sender=self, app=self.app)
 
+    def on_hup(self):
+        """Called after controller received signal SIGHUP."""
+        signals.app_on_hup.send(sender=self, app=self.app)
+
     def after_unpickling(self):
         """Called after application was unpickled."""
         pass

@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.2.10
+------
+
+- Add support for a signal SIGHUP;
+
 0.1.21
 ------
 

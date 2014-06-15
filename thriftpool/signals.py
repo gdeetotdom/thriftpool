@@ -46,3 +46,6 @@ app_shutdown = Signal(providing_args=['app'])
 
 #: Collect file descriptors that must not be closed.
 collect_excluded_fds = Signal(providing_args=[])
+
+#: Called after application received signal SIGHUP.
+app_on_hup = Signal(providing_args=['app'])

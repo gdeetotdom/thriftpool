@@ -62,6 +62,10 @@ class Controller(LogsMixin):
             self._signals['SIGINT'] = lambda signum, frame: None
         self._signals['SIGTERM'] = lambda signum, frame: self.stop()
         self._signals['SIGQUIT'] = lambda signum, frame: self.terminate()
+        self._signals['SIGHUP'] = lambda signum, frame: self.on_hup()
+
+    def on_hup(self):
+        self.app.loader.on_hup()
 
     def on_before_init(self):
         self.app.loader.on_before_init(self)
